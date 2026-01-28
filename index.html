@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>Filesmoon</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Streaming video Filemoon cepat, ringan, dan responsif.">
+
+<style>
+:root{
+  --bg:#0b0b0f;
+  --card:#15151d;
+  --accent:#e50914;
+  --text:#fff;
+  --muted:#9a9aab;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--text);
+  font-family:system-ui,-apple-system,BlinkMacSystemFont,sans-serif;
+}
+
+/* HEADER */
+header{
+  background:#000;
+  border-bottom:1px solid #1f1f2a;
+}
+.header-inner{
+  max-width:1200px;
+  margin:auto;
+  padding:14px 20px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+.logo{
+  font-size:22px;
+  font-weight:700;
+  color:var(--accent);
+  text-decoration:none;
+}
+
+/* LAYOUT */
+.container{
+  max-width:1200px;
+  margin:auto;
+  padding:16px;
+}
+
+/* PLAYER */
+.player{
+  display:none;
+  background:#000;
+  border-radius:16px;
+  overflow:hidden;
+  margin-bottom:16px;
+}
+.player iframe{
+  width:100%;
+  height:520px;
+  border:0;
+}
+@media(max-width:768px){
+  .player iframe{height:240px}
+}
+
+/* VIDEO INFO */
+.video-info{
+  display:none;
+  margin-bottom:24px;
+}
+.video-info h1{
+  font-size:18px;
+  margin:8px 0;
+}
+.video-meta{
+  font-size:13px;
+  color:var(--muted);
+}
+
+/* GRID */
+.grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(160px,1fr));
+  gap:14px;
+}
+.card{
+  background:var(--card);
+  border-radius:14px;
+  padding:28px 10px;
+  text-align:center;
+  cursor:pointer;
+  transition:.25s;
+}
+.card:hover{
+  transform:translateY(-4px);
+  box-shadow:0 12px 30px rgba(0,0,0,.4);
+}
+.card .thumb{
+  font-size:26px;
+  font-weight:800;
+  letter-spacing:2px;
+}
+.card p{
+  margin:10px 0 0;
+  font-size:13px;
+  color:#ddd;
+}
+
+/* PAGINATION */
+.pagination{
+  margin:28px 0;
+  text-align:center;
+}
+.pagination a{
+  display:inline-block;
+  padding:10px 18px;
+  background:#1f1f2a;
+  border-radius:8px;
+  color:#fff;
+  text-decoration:none;
+}
+.pagination a:hover{background:var(--accent)}
+
+/* FOOTER */
+footer{
+  text-align:center;
+  padding:20px;
+  color:var(--muted);
+  font-size:13px;
+}
+</style>
+
+<!-- JQUERY + POPUNDER GLOBAL -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.0/jquery.min.js"></script>
+<script>
+$(document).ready(()=>{
+  $("body").on("click",()=>{
+    const now = Date.now();
+    const last = localStorage.getItem("last_popunder") || 0;
+    if(now - last >= 300000){ // 5 menit
+      localStorage.setItem("last_popunder", now);
+      localStorage.setItem("last_popunder_time", now);
+      window.open(
+        "http://ads.filesmoon.site/go",
+        "_blank"
+      );
+    }
+  });
+});
+</script>
+
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <a href="/" class="logo">Filesmoon</a>
+    <span style="font-size:13px;color:#aaa">Filemoon Streaming</span>
+  </div>
+</header>
+
+<div class="container">
+
+  <div id="playerBox" class="player">
+    <iframe id="player" allowfullscreen allow="autoplay; fullscreen"></iframe>
+  </div>
+
+  <div id="videoInfo" class="video-info">
+    <h1 id="videoTitle"></h1>
+    <div class="video-meta">
+      ⏱ <span id="videoDuration">–</span> • 👁 <span id="videoViews">–</span> • 📅 <span id="videoDate">–</span>
+    </div>
+  </div>
+
+  <div id="videos" class="grid"></div>
+  <div id="pagination" class="pagination"></div>
+
+</div>
+
+<footer>
+  © 2026 Filesmoon
+</footer>
+
+<script>
+/* ========== CONFIG ========== */
+const API = "https://raspy-heart-f318.ap5089393.workers.dev/videos";  
+const DIRECT_LINK = "http://ads.filesmoon.site/go";  
+const HOME_PER_PAGE = 2;
+const STREAM_RECOMMEND = 10;
+const CARD_COOLDOWN = 300000;  
+const CARD_DELAY_AFTER_POP = 60000;  
+
+let FILES = [];
+const list = document.getElementById("videos");
+const pagination = document.getElementById("pagination");
+const playerBox = document.getElementById("playerBox");
+const videoInfo = document.getElementById("videoInfo");
+const player = document.getElementById("player");
+
+/* ========== CARD ADS ========== */
+function triggerCardAd(){
+  const now = Date.now();
+  const last = localStorage.getItem("last_card_ad") || 0;
+  const lastPop = localStorage.getItem("last_popunder_time") || 0;
+
+  if(now - lastPop < CARD_DELAY_AFTER_POP) return;
+  if(now - last < CARD_COOLDOWN) return;
+
+  localStorage.setItem("last_card_ad", now);
+  window.open(DIRECT_LINK, "_blank");
+}
+
+/* ========== ROUTER ========== */
+function handleRoute(){
+  const match = location.hash.match(/#\/e\/([\w]+)/);
+  if(!match) return;
+
+  history.replaceState(null,"",location.pathname + location.hash);
+  const code = match[1];
+  const video = FILES.find(v=>v.file_code===code);
+  if(!video) return;
+
+  player.src = `https://filemoon.to/e/${code}`;
+  playerBox.style.display = "block";
+  videoInfo.style.display = "block";
+
+  videoTitle.textContent = video.title || "Untitled";
+  videoDuration.textContent = video.length || "–";
+  videoViews.textContent = video.views || "–";
+  videoDate.textContent = video.uploaded || "–";
+
+  list.innerHTML="";
+  shuffle([...FILES]).slice(0,STREAM_RECOMMEND)
+    .forEach(v=>renderCard(v,false));
+}
+
+/* ========== RENDER CARD ========== */
+function renderCard(v, allowAd=true){
+  const card = document.createElement("div");
+  card.className="card";
+  card.innerHTML=`
+    <div class="thumb">VIDEO</div>
+    <p>${v.title||"Untitled Video"}</p>
+  `;
+  card.onclick=()=>{
+    if(allowAd) triggerCardAd();
+    location.hash=`/e/${v.file_code}`;
+  };
+  list.appendChild(card);
+}
+
+/* ========== UTILS ========== */
+function shuffle(a){
+  for(let i=a.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [a[i],a[j]]=[a[j],a[i]];
+  }
+  return a;
+}
+
+/* ========== INIT ========== */
+const PAGE = parseInt(new URLSearchParams(location.search).get("page")||"1");
+
+fetch(API).then(r=>r.json()).then(data=>{
+  FILES = data?.result?.files || [];
+  if(!FILES.length) return;
+
+  if(location.hash){
+    handleRoute();
+  }else{
+    FILES.slice((PAGE-1)*HOME_PER_PAGE, PAGE*HOME_PER_PAGE)
+      .forEach(v=>renderCard(v,true));
+
+    if(PAGE*HOME_PER_PAGE < FILES.length){
+      pagination.innerHTML=`<a href="?page=${PAGE+1}">Lihat video lainnya →</a>`;
+    }
+  }
+});
+
+window.addEventListener("hashchange", handleRoute);
+</script>
+
+</body>
+</html>
