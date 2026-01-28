@@ -87,58 +87,31 @@ header{
   gap:14px;
 }
 
-/* CARD */
+/* CARD SIMPLE */
 .card{
-  background: linear-gradient(145deg, #1a1a26, #11111b);
-  border-radius:14px;
-  padding:10px;
-  text-align:center;
+  background:var(--card);
+  border-radius:12px;
   cursor:pointer;
-  transition: all 0.3s ease;
-  overflow: hidden;
-  position: relative;
+  overflow:hidden;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .card:hover{
-  transform: translateY(-6px) scale(1.02);
-  box-shadow: 0 12px 25px rgba(0,0,0,0.5);
+  transform: translateY(-4px);
+  box-shadow:0 10px 20px rgba(0,0,0,0.4);
 }
 
 .card .thumb{
-  display:block;
   width:100%;
-  padding-top:56.25%; /* 16:9 aspect ratio */
-  background-color:#222;
-  border-radius:12px;
-  position: relative;
-  overflow: hidden;
-  margin-bottom:10px;
-  background-size: cover;
-  background-position: center;
-}
-
-.card .thumb::after{
-  content:"▶";
-  color: var(--accent);
-  font-size:40px;
-  position:absolute;
-  top:50%;
-  left:50%;
-  transform:translate(-50%, -50%);
-  opacity:0.8;
-  pointer-events:none;
-}
-
-.card .thumb:hover::after{
-  transform:translate(-50%, -50%) scale(1.2);
-  opacity:1;
-  transition: all 0.3s ease;
+  aspect-ratio:16/9;
+  object-fit:cover;
+  display:block;
 }
 
 .card p{
-  margin:0;
+  margin:8px;
   font-size:14px;
-  font-weight:600;
+  font-weight:500;
   color:#fff;
   white-space: nowrap;
   overflow: hidden;
@@ -169,25 +142,20 @@ footer{
 }
 </style>
 
-<!-- JQUERY + POPUNDER GLOBAL -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.0/jquery.min.js"></script>
 <script>
 $(document).ready(()=>{
   $("body").on("click",()=>{
     const now = Date.now();
     const last = localStorage.getItem("last_popunder") || 0;
-    if(now - last >= 300000){ // 5 menit
+    if(now - last >= 300000){
       localStorage.setItem("last_popunder", now);
       localStorage.setItem("last_popunder_time", now);
-      window.open(
-        "https://play.filesmoon.site/ads/go.html", 
-        "_blank"
-      );
+      window.open("https://play.filesmoon.site/ads/go.html", "_blank");
     }
   });
 });
 </script>
-
 </head>
 <body>
 
@@ -221,7 +189,6 @@ $(document).ready(()=>{
 </footer>
 
 <script>
-/* ========== CONFIG ========== */
 const API = "https://api.filesmoon.site/videos";  
 const DIRECT_LINK = "https://play.filesmoon.site/ads/go.html"; 
 const HOME_PER_PAGE = 8;   
@@ -240,51 +207,40 @@ const videoDuration = document.getElementById("videoDuration");
 const videoViews = document.getElementById("videoViews");
 const videoDate = document.getElementById("videoDate");
 
-/* ========== CARD ADS ========== */
 function triggerCardAd(){
   const now = Date.now();
   const last = localStorage.getItem("last_card_ad") || 0;
   const lastPop = localStorage.getItem("last_popunder_time") || 0;
-
   if(now - lastPop < CARD_DELAY_AFTER_POP) return;
   if(now - last < CARD_COOLDOWN) return;
-
   localStorage.setItem("last_card_ad", now);
   window.open(DIRECT_LINK, "_blank");
 }
 
-/* ========== ROUTER ========== */
 function handleRoute(){
   const match = location.hash.match(/#\/e\/([\w]+)/);
   if(!match) return;
-
   history.replaceState(null,"",location.pathname + location.hash);
   const code = match[1];
   const video = FILES.find(v=>v.file_code===code);
   if(!video) return;
-
   player.src = `https://filemoon.to/e/${code}`;
   playerBox.style.display = "block";
   videoInfo.style.display = "block";
-
   videoTitle.textContent = video.title || "Untitled";
   videoDuration.textContent = video.length || "–";
   videoViews.textContent = video.views || "–";
   videoDate.textContent = video.uploaded || "–";
-
   list.innerHTML="";
-  shuffle([...FILES]).slice(0,STREAM_RECOMMEND)
-    .forEach(v=>renderCard(v,false));
+  shuffle([...FILES]).slice(0,STREAM_RECOMMEND).forEach(v=>renderCard(v,false));
 }
 
-/* ========== RENDER CARD ========== */
 function renderCard(v, allowAd=true){
   const card = document.createElement("div");
   card.className="card";
-
-  const thumb = v.thumb || ""; // pakai thumbnail kalau ada
+  const thumb = v.thumb || "";
   card.innerHTML=`
-    <div class="thumb" style="background-image:url('${thumb}');"></div>
+    <img class="thumb" src="${thumb}" alt="${v.title||'Video'}">
     <p>${v.title||"Untitled Video"}</p>
   `;
   card.onclick=()=>{
@@ -294,7 +250,6 @@ function renderCard(v, allowAd=true){
   list.appendChild(card);
 }
 
-/* ========== UTILS ========== */
 function shuffle(a){
   for(let i=a.length-1;i>0;i--){
     const j=Math.floor(Math.random()*(i+1));
@@ -303,19 +258,15 @@ function shuffle(a){
   return a;
 }
 
-/* ========== INIT ========== */
 const PAGE = parseInt(new URLSearchParams(location.search).get("page")||"1");
 
 fetch(API).then(r=>r.json()).then(data=>{
   FILES = data?.result?.files || [];
   if(!FILES.length) return;
-
   if(location.hash){
     handleRoute();
   }else{
-    FILES.slice((PAGE-1)*HOME_PER_PAGE, PAGE*HOME_PER_PAGE)
-      .forEach(v=>renderCard(v,true));
-
+    FILES.slice((PAGE-1)*HOME_PER_PAGE, PAGE*HOME_PER_PAGE).forEach(v=>renderCard(v,true));
     if(PAGE*HOME_PER_PAGE < FILES.length){
       pagination.innerHTML=`<a href="?page=${PAGE+1}">Lihat video lainnya →</a>`;
     }
