@@ -86,27 +86,63 @@ header{
   grid-template-columns:repeat(auto-fill,minmax(160px,1fr));
   gap:14px;
 }
+
+/* CARD */
 .card{
-  background:var(--card);
+  background: linear-gradient(145deg, #1a1a26, #11111b);
   border-radius:14px;
-  padding:28px 10px;
+  padding:10px;
   text-align:center;
   cursor:pointer;
-  transition:.25s;
+  transition: all 0.3s ease;
+  overflow: hidden;
+  position: relative;
 }
+
 .card:hover{
-  transform:translateY(-4px);
-  box-shadow:0 12px 30px rgba(0,0,0,.4);
+  transform: translateY(-6px) scale(1.02);
+  box-shadow: 0 12px 25px rgba(0,0,0,0.5);
 }
+
 .card .thumb{
-  font-size:26px;
-  font-weight:800;
-  letter-spacing:2px;
+  display:block;
+  width:100%;
+  padding-top:56.25%; /* 16:9 aspect ratio */
+  background-color:#222;
+  border-radius:12px;
+  position: relative;
+  overflow: hidden;
+  margin-bottom:10px;
+  background-size: cover;
+  background-position: center;
 }
+
+.card .thumb::after{
+  content:"▶";
+  color: var(--accent);
+  font-size:40px;
+  position:absolute;
+  top:50%;
+  left:50%;
+  transform:translate(-50%, -50%);
+  opacity:0.8;
+  pointer-events:none;
+}
+
+.card .thumb:hover::after{
+  transform:translate(-50%, -50%) scale(1.2);
+  opacity:1;
+  transition: all 0.3s ease;
+}
+
 .card p{
-  margin:10px 0 0;
-  font-size:13px;
-  color:#ddd;
+  margin:0;
+  font-size:14px;
+  font-weight:600;
+  color:#fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* PAGINATION */
@@ -199,6 +235,10 @@ const pagination = document.getElementById("pagination");
 const playerBox = document.getElementById("playerBox");
 const videoInfo = document.getElementById("videoInfo");
 const player = document.getElementById("player");
+const videoTitle = document.getElementById("videoTitle");
+const videoDuration = document.getElementById("videoDuration");
+const videoViews = document.getElementById("videoViews");
+const videoDate = document.getElementById("videoDate");
 
 /* ========== CARD ADS ========== */
 function triggerCardAd(){
@@ -241,8 +281,10 @@ function handleRoute(){
 function renderCard(v, allowAd=true){
   const card = document.createElement("div");
   card.className="card";
+
+  const thumb = v.thumb || ""; // pakai thumbnail kalau ada
   card.innerHTML=`
-    <div class="thumb">VIDEO</div>
+    <div class="thumb" style="background-image:url('${thumb}');"></div>
     <p>${v.title||"Untitled Video"}</p>
   `;
   card.onclick=()=>{
