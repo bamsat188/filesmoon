@@ -14,9 +14,8 @@
   --text:#fff;
   --muted:#9a9aab;
 }
-*{box-sizing:border-box}
+*{box-sizing:border-box;margin:0;padding:0;}
 body{
-  margin:0;
   background:var(--bg);
   color:var(--text);
   font-family:system-ui,-apple-system,BlinkMacSystemFont,sans-serif;
@@ -42,7 +41,7 @@ header{
   text-decoration:none;
 }
 
-/* LAYOUT */
+/* CONTAINER */
 .container{
   max-width:1200px;
   margin:auto;
@@ -73,7 +72,7 @@ header{
 }
 .video-info h1{
   font-size:18px;
-  margin:8px 0;
+  margin-bottom:4px;
 }
 .video-meta{
   font-size:13px;
@@ -87,27 +86,26 @@ header{
   gap:14px;
 }
 
-/* CARD SIMPLE */
+/* CARD */
 .card{
   background:var(--card);
   border-radius:12px;
   cursor:pointer;
   overflow:hidden;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
+  display:flex;
+  flex-direction:column;
 }
-
 .card:hover{
   transform: translateY(-4px);
   box-shadow:0 10px 20px rgba(0,0,0,0.4);
 }
-
-.card .thumb{
+.card img.thumb{
   width:100%;
   aspect-ratio:16/9;
   object-fit:cover;
   display:block;
 }
-
 .card p{
   margin:8px;
   font-size:14px;
@@ -116,6 +114,7 @@ header{
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  text-align:center;
 }
 
 /* PAGINATION */
@@ -238,10 +237,10 @@ function handleRoute(){
 function renderCard(v, allowAd=true){
   const card = document.createElement("div");
   card.className="card";
-  const thumb = v.thumb || "";
+  const thumb = v.thumb || "https://via.placeholder.com/320x180?text=No+Image";
   card.innerHTML=`
     <img class="thumb" src="${thumb}" alt="${v.title||'Video'}">
-    <p>${v.title||"Untitled Video"}</p>
+    <p title="${v.title||'Untitled Video'}">${v.title||"Untitled Video"}</p>
   `;
   card.onclick=()=>{
     if(allowAd) triggerCardAd();
