@@ -144,7 +144,7 @@ $(document).ready(()=>{
       localStorage.setItem("last_popunder", now);
       localStorage.setItem("last_popunder_time", now);
       window.open(
-        "https://play.filesmoon.site/ads/go.html",
+        "https://api.filesmoon.site/videos", 
         "_blank"
       );
     }
@@ -181,15 +181,15 @@ $(document).ready(()=>{
 </div>
 
 <footer>
-  © 2026 Filesmoon
+  © 2026 Powered by Filemoon
 </footer>
 
 <script>
 /* ========== CONFIG ========== */
 const API = "https://api.filesmoon.site/videos";  
-const DIRECT_LINK = "https://play.filesmoon.site/ads/go.html";  
-const HOME_PER_PAGE = 10;
-const STREAM_RECOMMEND = 8;
+const DIRECT_LINK = "https://play.filesmoon.site/ads/go.html"; 
+const HOME_PER_PAGE = 8;   
+const STREAM_RECOMMEND = 6;  
 const CARD_COOLDOWN = 300000;  
 const CARD_DELAY_AFTER_POP = 60000;  
 
