@@ -5,153 +5,241 @@
 <title>Filesmoon</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
-<link href="https://fonts.googleapis.com/css2?familyOrbitron:wght@700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&display=swap" rel="stylesheet">
 
 <style>
 :root{
   --bg:#0b0b0f;
+  --card:#15151d;
   --accent:#e50914;
   --text:#fff;
+  --muted:#9a9aab;
 }
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,sans-serif}
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--text);
+  font-family:system-ui,-apple-system,BlinkMacSystemFont,sans-serif;
+}
 
 /* HEADER */
-header{background:#000;padding:14px 20px;border-bottom:1px solid #1f1f2a}
-.logo{color:var(--accent);font-size:22px;font-weight:700;text-decoration:none}
+header{background:#000;border-bottom:1px solid #1f1f2a;}
+.header-inner{
+  max-width:1200px;margin:auto;padding:14px 20px;
+  display:flex;justify-content:space-between;align-items:center;
+}
+.logo{font-size:22px;font-weight:700;color:var(--accent);text-decoration:none}
 
 /* LAYOUT */
 .container{max-width:1200px;margin:auto;padding:16px}
 
 /* PLAYER */
-.player{display:none;position:relative;background:#000;border-radius:16px;overflow:hidden}
+.player{
+  display:none;
+  position:relative;
+  background:#000;
+  border-radius:16px;
+  overflow:hidden;
+  margin-bottom:24px;
+}
 .player iframe{width:100%;height:520px;border:0}
 @media(max-width:768px){.player iframe{height:240px}}
 
-/* PLAY OVERLAY */
-#playerOverlay{
-  position:absolute;inset:0;
-  display:flex;align-items:center;justify-content:center;
-  background:rgba(0,0,0,.55);
-  font-family:'Orbitron',sans-serif;
-  font-size:32px;color:var(--accent);
-  cursor:pointer;z-index:2;
+/* CLICK CATCHER */
+#adCatcher{
+  position:absolute;
+  inset:0;
+  z-index:5;
+  background:transparent;
 }
 
+/* INFO */
+.video-info{display:none;margin-bottom:20px}
+.video-info h1{font-size:18px;margin:6px 0}
+.video-meta{font-size:13px;color:var(--muted)}
+
 /* GRID */
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px;margin-top:20px}
+.grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(160px,1fr));
+  gap:14px;
+}
 
 /* CARD */
-.card{background:#15151d;border-radius:16px;overflow:hidden;cursor:pointer;transition:.3s}
-.card:hover{transform:translateY(-6px) scale(1.02)}
+.card{
+  background:linear-gradient(145deg,#1a1a26,#11111b);
+  border-radius:16px;
+  overflow:hidden;
+  cursor:pointer;
+  transition:.3s;
+}
+.card:hover{transform:translateY(-6px) scale(1.03)}
 
-/* THUMB */
 .thumb{
+  width:100%;
   padding-top:56.25%;
   background-size:cover;
   background-position:center;
   position:relative;
 }
-.thumb::before{
-  content:"";
-  position:absolute;inset:0;
-  background:linear-gradient(to bottom,rgba(0,0,0,.25),rgba(0,0,0,.7));
-}
 .thumb::after{
   content:"VIDEO";
-  position:absolute;top:50%;left:50%;
-  transform:translate(-50%,-50%);
+  position:absolute;
+  inset:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
   font-family:'Orbitron',sans-serif;
   font-size:26px;
   letter-spacing:3px;
   color:var(--accent);
-  text-shadow:0 4px 12px rgba(0,0,0,.8);
+  opacity:.85;
 }
 
-/* INFO */
 .info{padding:12px}
-.title{margin:0;font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.title{
+  margin:0;
+  font-size:14px;
+  font-weight:600;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+/* FOOTER */
+footer{text-align:center;padding:20px;color:#999;font-size:13px}
 </style>
 </head>
 
 <body>
 
 <header>
-  <a href="/" class="logo">Filesmoon</a>
+  <div class="header-inner">
+    <a href="/" class="logo">Filesmoon</a>
+    <span style="font-size:13px;color:#aaa">Streaming</span>
+  </div>
 </header>
 
 <div class="container">
 
+  <!-- PLAYER -->
   <div id="playerBox" class="player">
-    <iframe id="player" allowfullscreen allow="autoplay"></iframe>
-    <div id="playerOverlay">PLAY</div>
+    <iframe id="player" allowfullscreen allow="autoplay; fullscreen"></iframe>
+    <div id="adCatcher"></div>
   </div>
 
+  <!-- INFO -->
+  <div id="videoInfo" class="video-info">
+    <h1 id="videoTitle"></h1>
+    <div class="video-meta">📅 <span id="videoDate"></span></div>
+  </div>
+
+  <!-- LIST / RECOMMEND -->
   <div id="videos" class="grid"></div>
 
 </div>
 
-<script>
-/* CONFIG */
-const API = "https://api.filesmoon.site/videos";
-const DIRECT_LINK = "https://play.filesmoon.site/ads/go.html";
-const AD_DELAY = 45000;
+<footer>© 2026 Filesmoon</footer>
 
-/* VAR */
+<script>
+/* ================= CONFIG ================= */
+const API = "https://api.filesmoon.site/videos";
+const ADS_URL = "https://play.filesmoon.site/ads/go.html";
+
+const PLAY_COOLDOWN = 45000; // 45 detik
+const CARD_COOLDOWN = 45000; // 45 detik
+
+const HOME_LIMIT = 8;
+const STREAM_RECOMMEND = 6;
+
+/* ================= STATE ================= */
 let FILES=[];
+let CURRENT=null;
+
 const list=document.getElementById("videos");
 const playerBox=document.getElementById("playerBox");
 const player=document.getElementById("player");
-const overlay=document.getElementById("playerOverlay");
+const catcher=document.getElementById("adCatcher");
 
-/* ADS WITH SEPARATE COOLDOWN */
-function fireAd(key){
-  const now=Date.now();
-  const last=parseInt(localStorage.getItem(key)||"0");
-  if(now-last>=AD_DELAY){
-    localStorage.setItem(key,now);
-    window.open(DIRECT_LINK,"_blank");
+const videoInfo=document.getElementById("videoInfo");
+const videoTitle=document.getElementById("videoTitle");
+const videoDate=document.getElementById("videoDate");
+
+/* ================= ADS CORE ================= */
+function fireAd(key, cooldown){
+  const last = +localStorage.getItem(key) || 0;
+  if(Date.now() - last >= cooldown){
+    localStorage.setItem(key, Date.now());
+    window.open(ADS_URL, "_blank");
   }
 }
 
-/* RENDER CARD */
+/* ================= PLAY CLICK ================= */
+catcher.addEventListener("click", ()=>{
+  fireAd("play_ad", PLAY_COOLDOWN);
+
+  // matikan sementara agar video normal
+  catcher.style.pointerEvents="none";
+  setTimeout(()=>{
+    catcher.style.pointerEvents="auto";
+  }, PLAY_COOLDOWN);
+});
+
+/* ================= OPEN VIDEO ================= */
+function openVideo(v){
+  CURRENT=v;
+  player.src="https://filemoon.to/e/"+v.file_code;
+  playerBox.style.display="block";
+
+  videoInfo.style.display="block";
+  videoTitle.textContent=v.title||"Untitled";
+  videoDate.textContent=v.uploaded||"-";
+
+  catcher.style.pointerEvents="auto";
+
+  renderRecommend();
+  window.scrollTo({top:0,behavior:"smooth"});
+}
+
+/* ================= CARD ================= */
 function renderCard(v){
-  const card=document.createElement("div");
-  card.className="card";
-  card.innerHTML=`
+  const c=document.createElement("div");
+  c.className="card";
+  c.innerHTML=`
     <div class="thumb" style="background-image:url('${v.thumb||""}')"></div>
     <div class="info"><p class="title">${v.title||"Untitled Video"}</p></div>
   `;
-  card.onclick=()=>{
-    fireAd("ad_card_time");
-    location.hash=`/e/${v.file_code}`;
+  c.onclick=()=>{
+    fireAd("card_ad", CARD_COOLDOWN);
+    openVideo(v);
   };
-  list.appendChild(card);
+  list.appendChild(c);
 }
 
-/* ROUTER */
-function handleRoute(){
-  const m=location.hash.match(/#\/e\/([\w]+)/);
-  if(!m) return;
-
-  player.src=`https://filemoon.to/e/${m[1]}`;
-  playerBox.style.display="block";
-  overlay.style.display="flex";
+/* ================= RENDER ================= */
+function renderHome(){
+  list.innerHTML="";
+  FILES.slice(0,HOME_LIMIT).forEach(renderCard);
 }
 
-/* PLAY CLICK */
-overlay.onclick=()=>{
-  fireAd("ad_play_time");
-  overlay.style.display="none";
-};
+function renderRecommend(){
+  list.innerHTML="";
+  FILES
+    .filter(v=>v.file_code!==CURRENT.file_code)
+    .sort(()=>0.5-Math.random())
+    .slice(0,STREAM_RECOMMEND)
+    .forEach(renderCard);
+}
 
-/* INIT */
-fetch(API).then(r=>r.json()).then(data=>{
-  FILES=data?.result?.files||[];
-  FILES.slice(0,8).forEach(renderCard);
-  if(location.hash) handleRoute();
+/* ================= INIT ================= */
+fetch(API)
+.then(r=>r.json())
+.then(d=>{
+  FILES=d?.result?.files||[];
+  if(!FILES.length) return;
+  renderHome();
 });
-window.addEventListener("hashchange",handleRoute);
 </script>
 
 </body>
