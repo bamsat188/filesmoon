@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <title>Filesmoon</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Streaming video Filemoon cepat, ringan, dan responsif.">
 
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&display=swap" rel="stylesheet">
 
@@ -42,6 +43,7 @@ header{background:#000;border-bottom:1px solid #1f1f2a}
 
 .container{max-width:1200px;margin:auto;padding:16px}
 
+/* PLAYER */
 .player{
   display:none;
   background:#000;
@@ -59,16 +61,17 @@ header{background:#000;border-bottom:1px solid #1f1f2a}
   .player iframe{height:240px}
 }
 
-/* OVERLAY INVISIBLE */
+/* OVERLAY (TRANSPARENT CLICK LAYER) */
 #playerOverlay{
   position:absolute;
   inset:0;
-  background:#000;
-  opacity:0;
+  background:rgba(0,0,0,0); /* opacity 0 */
+  display:flex;
   cursor:pointer;
   z-index:3;
 }
 
+/* INFO */
 .video-info{display:none;margin-bottom:24px}
 .video-info h1{font-size:18px;margin:8px 0}
 .video-meta{font-size:13px;color:var(--muted)}
@@ -96,6 +99,13 @@ header{background:#000;border-bottom:1px solid #1f1f2a}
   position:relative;
 }
 
+.thumb::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  background:linear-gradient(to bottom,rgba(0,0,0,.25),rgba(0,0,0,.7));
+}
+
 .thumb::after{
   content:"VIDEO";
   position:absolute;
@@ -103,7 +113,8 @@ header{background:#000;border-bottom:1px solid #1f1f2a}
   left:50%;
   transform:translate(-50%,-50%);
   font-family:'Orbitron',sans-serif;
-  font-size:26px;
+  font-size:28px;
+  letter-spacing:3px;
   color:var(--accent);
 }
 
@@ -140,6 +151,7 @@ footer{text-align:center;padding:20px;color:#777;font-size:13px}
 
 <div class="container">
 
+  <!-- PLAYER -->
   <div id="playerBox" class="player">
     <iframe id="player" allowfullscreen allow="autoplay; fullscreen"></iframe>
     <div id="playerOverlay"></div>
@@ -158,7 +170,7 @@ footer{text-align:center;padding:20px;color:#777;font-size:13px}
 <footer>© 2026 Powered by Filemoon</footer>
 
 <script>
-/* ================= CONFIG ================= */
+/* CONFIG */
 const API = "https://api.filesmoon.site/videos";
 const DIRECT_LINK = "https://play.filesmoon.site/ads/go.html";
 const AD_DELAY = 45000;
@@ -168,7 +180,7 @@ const STREAM_RECOMMEND = 6;
 let FILES=[];
 let adInterval=null;
 
-/* ================= ELEMENT ================= */
+/* ELEMENT */
 const list=document.getElementById("videos");
 const pagination=document.getElementById("pagination");
 const playerBox=document.getElementById("playerBox");
@@ -178,7 +190,7 @@ const videoInfo=document.getElementById("videoInfo");
 const videoTitle=document.getElementById("videoTitle");
 const videoDate=document.getElementById("videoDate");
 
-/* ================= ADS ================= */
+/* ADS */
 function fireAd(){
   const now=Date.now();
   const last=parseInt(localStorage.getItem("last_ad")||"0");
@@ -191,11 +203,11 @@ function fireAd(){
 function startAdOverlayTimer(){
   clearInterval(adInterval);
   adInterval=setInterval(()=>{
-    overlay.style.display="block";
+    overlay.style.display="flex";
   },AD_DELAY);
 }
 
-/* ================= CARD ================= */
+/* CARD */
 function renderCard(v){
   const card=document.createElement("div");
   card.className="card";
@@ -205,12 +217,13 @@ function renderCard(v){
   `;
   card.onclick=()=>{
     fireAd();
-    location.hash=`/e/${v.file_code}`;
+    location.hash = `/e/${v.file_code}`;
+    setTimeout(handleRoute, 0); // FIX BUG HOMEPAGE
   };
   list.appendChild(card);
 }
 
-/* ================= ROUTER ================= */
+/* ROUTER */
 function handleRoute(){
   const m=location.hash.match(/#\/e\/([\w]+)/);
   if(!m) return;
@@ -220,7 +233,7 @@ function handleRoute(){
 
   player.src=`https://filemoon.to/e/${m[1]}`;
   playerBox.style.display="block";
-  overlay.style.display="block";
+  overlay.style.display="flex";
 
   videoInfo.style.display="block";
   videoTitle.textContent=video.title||"Untitled";
@@ -234,31 +247,23 @@ function handleRoute(){
   startAdOverlayTimer();
 }
 
+/* CLICK OVERLAY */
 overlay.onclick=()=>{
   fireAd();
   overlay.style.display="none";
   startAdOverlayTimer();
 };
 
-/* ================= INIT (FIX API) ================= */
+/* INIT */
 const PAGE=parseInt(new URLSearchParams(location.search).get("page")||"1");
 
 fetch(API)
-.then(r=>{
-  if(!r.ok) throw new Error("API ERROR");
-  return r.json();
-})
+.then(r=>r.json())
 .then(data=>{
-  // AUTO-DETECT STRUKTUR API
   if(Array.isArray(data)) FILES=data;
   else if(data.files) FILES=data.files;
   else if(data.result && data.result.files) FILES=data.result.files;
   else FILES=[];
-
-  if(!FILES.length){
-    console.error("API terbaca tapi kosong", data);
-    return;
-  }
 
   if(location.hash) handleRoute();
   else{
@@ -266,14 +271,12 @@ fetch(API)
          .forEach(renderCard);
 
     if(PAGE*HOME_PER_PAGE<FILES.length){
-      pagination.innerHTML=
-        `<a href="?page=${PAGE+1}">Lihat video lainnya →</a>`;
+      pagination.innerHTML=`<a href="?page=${PAGE+1}">Lihat video lainnya →</a>`;
     }
   }
-})
-.catch(err=>{
-  console.error("GAGAL LOAD API:", err);
 });
+
+window.addEventListener("hashchange", handleRoute);
 </script>
 
 </body>
