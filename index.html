@@ -4,260 +4,134 @@
 <meta charset="UTF-8">
 <title>Filesmoon</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="Streaming video Filemoon cepat, ringan, dan responsif.">
-
-<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&display=swap" rel="stylesheet">
 
 <style>
-:root{
-  --bg:#0b0b0f;
-  --card:#15151d;
-  --accent:#e50914;
-  --text:#fff;
-  --muted:#9a9aab;
-}
-*{box-sizing:border-box}
-body{
+html,body{
   margin:0;
-  background:var(--bg);
-  color:var(--text);
-  font-family:system-ui,-apple-system,BlinkMacSystemFont,sans-serif;
+  background:#000;
+  color:#fff;
+  font-family:system-ui,sans-serif;
 }
-
-/* HEADER */
-header{background:#000;border-bottom:1px solid #1f1f2a}
-.header-inner{max-width:1200px;margin:auto;padding:14px 20px;display:flex;justify-content:space-between;align-items:center}
-.logo{font-size:22px;font-weight:700;color:var(--accent);text-decoration:none}
-
-/* LAYOUT */
-.container{max-width:1200px;margin:auto;padding:16px}
 
 /* PLAYER */
-.player{display:none;background:#000;border-radius:16px;overflow:hidden;margin-bottom:16px;position:relative}
-.player iframe{width:100%;height:520px;border:0}
-@media(max-width:768px){.player iframe{height:240px}}
+#playerBox{
+  position:relative;
+  max-width:960px;
+  margin:20px auto;
+  aspect-ratio:16/9;
+  background:#000;
+  border-radius:14px;
+  overflow:hidden;
+}
 
-/* PLAY OVERLAY */
+iframe{
+  width:100%;
+  height:100%;
+  border:0;
+}
+
+/* overlay awal */
 #playerOverlay{
   position:absolute;
   inset:0;
-  background:rgba(0,0,0,.55);
   display:flex;
   align-items:center;
   justify-content:center;
-  cursor:pointer;
-  z-index:3;
-  font-family:'Orbitron',sans-serif;
+  background:rgba(0,0,0,.55);
   font-size:32px;
-  color:var(--accent);
-}
-
-/* VIDEO INFO */
-.video-info{display:none;margin-bottom:24px}
-.video-info h1{font-size:18px;margin:8px 0}
-.video-meta{font-size:13px;color:var(--muted)}
-
-/* GRID */
-.grid{
-  display:grid;
-  grid-template-columns:repeat(auto-fill,minmax(160px,1fr));
-  gap:14px;
-}
-
-/* CARD */
-.card{
-  background:linear-gradient(145deg,#1a1a26,#11111b);
-  border-radius:16px;
   cursor:pointer;
-  overflow:hidden;
-  transition:.3s;
-  position:relative;
-}
-.card:hover{transform:translateY(-6px) scale(1.02)}
-
-/* THUMB */
-.thumb{
-  width:100%;
-  padding-top:56.25%;
-  background-size:cover;
-  background-position:center;
-  position:relative;
-  overflow:hidden;
-  border-radius:16px 16px 0 0;
+  z-index:10;
 }
 
-/* dark overlay */
-.thumb::before{
-  content:"";
-  position:absolute;
-  inset:0;
-  background:linear-gradient(
-    to bottom,
-    rgba(0,0,0,.25),
-    rgba(0,0,0,.7)
-  );
-  z-index:1;
+/* overlay jebakan invisible */
+#playerOverlay.hidden-trigger{
+  background:transparent;
+  color:transparent;
+  pointer-events:auto;
 }
-
-/* VIDEO TEXT */
-.thumb::after{
-  content:"VIDEO";
-  position:absolute;
-  top:50%;
-  left:50%;
-  transform:translate(-50%,-50%);
-  font-family:'Orbitron',sans-serif;
-  font-size:28px;
-  font-weight:700;
-  letter-spacing:3px;
-  color:var(--accent);
-  text-shadow:0 4px 14px rgba(0,0,0,.85);
-  z-index:2;
-  opacity:.9;
-  pointer-events:none;
-}
-
-.card:hover .thumb::after{
-  transform:translate(-50%,-50%) scale(1.15);
-  opacity:1;
-  transition:.25s ease;
-}
-
-/* INFO */
-.info{padding:12px}
-.title{
-  margin:0;
-  font-size:14px;
-  font-weight:600;
-  white-space:nowrap;
-  overflow:hidden;
-  text-overflow:ellipsis;
-}
-
-/* PAGINATION */
-.pagination{text-align:center;margin:28px 0}
-.pagination a{
-  padding:10px 18px;
-  background:#1f1f2a;
-  border-radius:8px;
-  color:#fff;
-  text-decoration:none;
-}
-
-/* FOOTER */
-footer{text-align:center;padding:20px;color:#777;font-size:13px}
 </style>
 </head>
 
 <body>
 
-<header>
-  <div class="header-inner">
-    <a href="/" class="logo">Filesmoon</a>
-    <span style="font-size:13px;color:#aaa">Filemoon Streaming</span>
-  </div>
-</header>
-
-<div class="container">
-
-  <div id="playerBox" class="player">
-    <iframe id="player" allowfullscreen allow="autoplay; fullscreen"></iframe>
-    <div id="playerOverlay">PLAY</div>
-  </div>
-
-  <div id="videoInfo" class="video-info">
-    <h1 id="videoTitle"></h1>
-    <div class="video-meta">📅 <span id="videoDate">–</span></div>
-  </div>
-
-  <div id="videos" class="grid"></div>
-  <div id="pagination" class="pagination"></div>
-
+<div id="playerBox">
+  <iframe id="player" allowfullscreen allow="autoplay; fullscreen"></iframe>
+  <div id="playerOverlay">PLAY</div>
 </div>
 
-<footer>© 2026 Powered by Filemoon</footer>
-
 <script>
-/* CONFIG */
+/* ===============================
+   CONFIG (PUNYA KAMU)
+================================ */
 const API = "https://api.filesmoon.site/videos";
 const DIRECT_LINK = "https://play.filesmoon.site/ads/go.html";
 const AD_DELAY = 45000;
-const HOME_PER_PAGE = 8;
-const STREAM_RECOMMEND = 6;
 
-let FILES=[];
-const list=document.getElementById("videos");
-const pagination=document.getElementById("pagination");
-const playerBox=document.getElementById("playerBox");
-const player=document.getElementById("player");
-const overlay=document.getElementById("playerOverlay");
-const videoInfo=document.getElementById("videoInfo");
-const videoTitle=document.getElementById("videoTitle");
-const videoDate=document.getElementById("videoDate");
+/* ===============================
+   ELEMENT
+================================ */
+const overlay = document.getElementById("playerOverlay");
+const player  = document.getElementById("player");
+const box     = document.getElementById("playerBox");
 
-/* ADS */
+/* ===============================
+   STATE
+================================ */
+let FILES = [];
+let adTimer = null;
+let triggerReady = false;
+
+/* ===============================
+   ADS LOGIC
+================================ */
+function armAdTrigger(){
+  clearTimeout(adTimer);
+  triggerReady = false;
+
+  adTimer = setTimeout(()=>{
+    triggerReady = true;
+    overlay.style.display = "flex";
+    overlay.classList.add("hidden-trigger");
+  }, AD_DELAY);
+}
+
 function fireAd(){
-  const now=Date.now();
-  const last=parseInt(localStorage.getItem("last_ad")||"0");
-  if(now-last>=AD_DELAY){
-    localStorage.setItem("last_ad",now);
-    window.open(DIRECT_LINK,"_blank");
-  }
+  if(!triggerReady) return;
+
+  triggerReady = false;
+  overlay.style.display = "none";
+  overlay.classList.remove("hidden-trigger");
+
+  window.open(DIRECT_LINK, "_blank");
+  armAdTrigger();
 }
 
-/* CARD */
-function renderCard(v){
-  const card=document.createElement("div");
-  card.className="card";
-  card.innerHTML=`
-    <div class="thumb" style="background-image:url('${v.thumb||""}')"></div>
-    <div class="info"><p class="title">${v.title||"Untitled Video"}</p></div>
-  `;
-  card.onclick=()=>{
-    fireAd();
-    location.hash=`/e/${v.file_code}`;
-  };
-  list.appendChild(card);
-}
-
-/* ROUTER */
-function handleRoute(){
-  const m=location.hash.match(/#\/e\/([\w]+)/);
-  if(!m) return;
-  const video=FILES.find(v=>v.file_code===m[1]);
-  if(!video) return;
-
-  player.src=`https://filemoon.to/e/${m[1]}`;
-  playerBox.style.display="block";
-  overlay.style.display="flex";
-
-  videoInfo.style.display="block";
-  videoTitle.textContent=video.title||"Untitled";
-  videoDate.textContent=video.uploaded||"–";
-
-  list.innerHTML="";
-  FILES.sort(()=>0.5-Math.random()).slice(0,STREAM_RECOMMEND).forEach(renderCard);
-}
-
-/* PLAY */
-overlay.onclick=()=>{
-  fireAd();
-  overlay.style.display="none";
+/* ===============================
+   PLAY
+================================ */
+overlay.onclick = () => {
+  overlay.style.display = "none";
+  overlay.classList.remove("hidden-trigger");
+  armAdTrigger();
 };
 
-/* INIT */
-const PAGE=parseInt(new URLSearchParams(location.search).get("page")||"1");
-fetch(API).then(r=>r.json()).then(data=>{
-  FILES=data?.result?.files||[];
-  if(location.hash) handleRoute();
-  else{
-    FILES.slice((PAGE-1)*HOME_PER_PAGE,PAGE*HOME_PER_PAGE).forEach(renderCard);
-    if(PAGE*HOME_PER_PAGE<FILES.length){
-      pagination.innerHTML=`<a href="?page=${PAGE+1}">Lihat video lainnya →</a>`;
-    }
-  }
-});
-window.addEventListener("hashchange",handleRoute);
+/* trigger dari interaksi user */
+box.addEventListener("pointerdown", fireAd);
+box.addEventListener("touchstart", fireAd);
+
+/* ===============================
+   LOAD VIDEO DARI API
+================================ */
+fetch(API)
+  .then(r => r.json())
+  .then(data => {
+    FILES = data?.result?.files || [];
+    if(!FILES.length) return;
+
+    const v = FILES[0]; // video pertama
+    player.src = `https://filemoon.to/e/${v.file_code}`;
+  });
+
 </script>
 
 </body>
