@@ -9,15 +9,17 @@
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&display=swap" rel="stylesheet">
 
 <style>
+/* ===================== WARNA & TEMA ===================== */
 :root{
-  --bg:#0b0b0f;
-  --card:#15151d;
-  --accent:#e50914;
-  --text:#fff;
-  --muted:#9a9aab;
+  --bg:#0b0b0f;        /* background utama */
+  --card:#15151d;     /* warna kartu */
+  --accent:#e50914;   /* warna aksen (merah) */
+  --text:#fff;        /* warna teks */
+  --muted:#9a9aab;    /* teks sekunder */
 }
 *{box-sizing:border-box}
 
+/* ===================== BODY ===================== */
 body{
   margin:0;
   background:var(--bg);
@@ -25,6 +27,7 @@ body{
   font-family:system-ui,-apple-system,BlinkMacSystemFont,sans-serif;
 }
 
+/* ===================== HEADER ===================== */
 header{background:#000;border-bottom:1px solid #1f1f2a}
 .header-inner{
   max-width:1200px;
@@ -43,9 +46,9 @@ header{background:#000;border-bottom:1px solid #1f1f2a}
 
 .container{max-width:1200px;margin:auto;padding:16px}
 
-/* PLAYER */
+/* ===================== PLAYER ===================== */
 .player{
-  display:none;
+  display:none;               /* disembunyikan sampai video diklik */
   background:#000;
   border-radius:16px;
   overflow:hidden;
@@ -61,27 +64,30 @@ header{background:#000;border-bottom:1px solid #1f1f2a}
   .player iframe{height:240px}
 }
 
-/* OVERLAY (TRANSPARENT CLICK LAYER) */
+/* ===================== OVERLAY TRANSPARAN ===================== */
+/* layer klik untuk trigger iklan (tidak terlihat user) */
 #playerOverlay{
   position:absolute;
   inset:0;
-  background:rgba(0,0,0,0); /* opacity 0 */
+  background:rgba(0,0,0,0); /* opacity 0 = invisible */
   display:flex;
   cursor:pointer;
   z-index:3;
 }
 
-/* INFO */
+/* ===================== INFO VIDEO ===================== */
 .video-info{display:none;margin-bottom:24px}
 .video-info h1{font-size:18px;margin:8px 0}
 .video-meta{font-size:13px;color:var(--muted)}
 
+/* ===================== GRID VIDEO ===================== */
 .grid{
   display:grid;
   grid-template-columns:repeat(auto-fill,minmax(160px,1fr));
   gap:14px;
 }
 
+/* ===================== CARD VIDEO ===================== */
 .card{
   background:linear-gradient(145deg,#1a1a26,#11111b);
   border-radius:16px;
@@ -99,6 +105,7 @@ header{background:#000;border-bottom:1px solid #1f1f2a}
   position:relative;
 }
 
+/* efek gelap di thumbnail */
 .thumb::before{
   content:"";
   position:absolute;
@@ -106,6 +113,7 @@ header{background:#000;border-bottom:1px solid #1f1f2a}
   background:linear-gradient(to bottom,rgba(0,0,0,.25),rgba(0,0,0,.7));
 }
 
+/* teks VIDEO di tengah thumbnail */
 .thumb::after{
   content:"VIDEO";
   position:absolute;
@@ -127,6 +135,7 @@ header{background:#000;border-bottom:1px solid #1f1f2a}
   text-overflow:ellipsis;
 }
 
+/* ===================== PAGINATION ===================== */
 .pagination{text-align:center;margin:28px 0}
 .pagination a{
   padding:10px 18px;
@@ -151,18 +160,23 @@ footer{text-align:center;padding:20px;color:#777;font-size:13px}
 
 <div class="container">
 
-  <!-- PLAYER -->
+  <!-- PLAYER VIDEO -->
   <div id="playerBox" class="player">
     <iframe id="player" allowfullscreen allow="autoplay; fullscreen"></iframe>
+    <!-- overlay klik transparan -->
     <div id="playerOverlay"></div>
   </div>
 
+  <!-- INFO VIDEO -->
   <div id="videoInfo" class="video-info">
     <h1 id="videoTitle"></h1>
     <div class="video-meta">📅 <span id="videoDate">–</span></div>
   </div>
 
+  <!-- LIST VIDEO -->
   <div id="videos" class="grid"></div>
+
+  <!-- PAGINATION -->
   <div id="pagination" class="pagination"></div>
 
 </div>
@@ -170,112 +184,144 @@ footer{text-align:center;padding:20px;color:#777;font-size:13px}
 <footer>© 2026 Powered by Filemoon</footer>
 
 <script>
-/* CONFIG */
+/* ===================== CONFIG ===================== */
+
+// URL API untuk mengambil daftar video
 const API = "https://api.filesmoon.site/videos";
+
+// Link iklan (pop-under)
 const DIRECT_LINK = "https://play.filesmoon.site/ads/go.html";
+
+// Jeda iklan (45 detik)
 const AD_DELAY = 45000;
+
+// Jumlah video di homepage
 const HOME_PER_PAGE = 8;
+
+// Jumlah rekomendasi di halaman stream
 const STREAM_RECOMMEND = 6;
 
-let FILES=[];
-let adInterval=null;
+// Penyimpanan data video dari API
+let FILES = [];
 
-/* ELEMENT */
-const list=document.getElementById("videos");
-const pagination=document.getElementById("pagination");
-const playerBox=document.getElementById("playerBox");
-const player=document.getElementById("player");
-const overlay=document.getElementById("playerOverlay");
-const videoInfo=document.getElementById("videoInfo");
-const videoTitle=document.getElementById("videoTitle");
-const videoDate=document.getElementById("videoDate");
+// Timer interval untuk overlay iklan
+let adInterval = null;
 
-/* ADS */
+/* ===================== ELEMENT DOM ===================== */
+const list = document.getElementById("videos");
+const pagination = document.getElementById("pagination");
+const playerBox = document.getElementById("playerBox");
+const player = document.getElementById("player");
+const overlay = document.getElementById("playerOverlay");
+const videoInfo = document.getElementById("videoInfo");
+const videoTitle = document.getElementById("videoTitle");
+const videoDate = document.getElementById("videoDate");
+
+/* ===================== IKLAN ===================== */
+// Trigger pop-under dengan delay (pakai localStorage)
 function fireAd(){
-  const now=Date.now();
-  const last=parseInt(localStorage.getItem("last_ad")||"0");
-  if(now-last>=AD_DELAY){
-    localStorage.setItem("last_ad",now);
-    window.open(DIRECT_LINK,"_blank");
+  const now = Date.now();
+  const last = parseInt(localStorage.getItem("last_ad") || "0");
+  if(now - last >= AD_DELAY){
+    localStorage.setItem("last_ad", now);
+    window.open(DIRECT_LINK, "_blank");
   }
 }
 
+// Menampilkan ulang overlay tiap 45 detik
 function startAdOverlayTimer(){
   clearInterval(adInterval);
-  adInterval=setInterval(()=>{
-    overlay.style.display="flex";
-  },AD_DELAY);
+  adInterval = setInterval(()=>{
+    overlay.style.display = "flex";
+  }, AD_DELAY);
 }
 
-/* CARD */
+/* ===================== RENDER CARD VIDEO ===================== */
 function renderCard(v){
-  const card=document.createElement("div");
-  card.className="card";
-  card.innerHTML=`
-    <div class="thumb" style="background-image:url('${v.thumb||""}')"></div>
-    <div class="info"><p class="title">${v.title||"Untitled Video"}</p></div>
+  const card = document.createElement("div");
+  card.className = "card";
+  card.innerHTML = `
+    <div class="thumb" style="background-image:url('${v.thumb || ""}')"></div>
+    <div class="info"><p class="title">${v.title || "Untitled Video"}</p></div>
   `;
-  card.onclick=()=>{
+
+  // klik card → iklan → pindah ke halaman stream
+  card.onclick = () => {
     fireAd();
     location.hash = `/e/${v.file_code}`;
-    setTimeout(handleRoute, 0); // FIX BUG HOMEPAGE
+    setTimeout(handleRoute, 0); // FIX bug harus reload
   };
+
   list.appendChild(card);
 }
 
-/* ROUTER */
+/* ===================== ROUTER STREAM ===================== */
+// membaca hash #/e/xxxxx
 function handleRoute(){
-  const m=location.hash.match(/#\/e\/([\w]+)/);
+  const m = location.hash.match(/#\/e\/([\w]+)/);
   if(!m) return;
 
-  const video=FILES.find(v=>v.file_code===m[1]);
+  // cari video sesuai file_code
+  const video = FILES.find(v => v.file_code === m[1]);
   if(!video) return;
 
-  player.src=`https://filemoon.to/e/${m[1]}`;
-  playerBox.style.display="block";
-  overlay.style.display="flex";
+  // load player
+  player.src = `https://filemoon.to/e/${m[1]}`;
+  playerBox.style.display = "block";
+  overlay.style.display = "flex";
 
-  videoInfo.style.display="block";
-  videoTitle.textContent=video.title||"Untitled";
-  videoDate.textContent=video.uploaded||"–";
+  // tampilkan info video
+  videoInfo.style.display = "block";
+  videoTitle.textContent = video.title || "Untitled";
+  videoDate.textContent = video.uploaded || "–";
 
-  list.innerHTML="";
-  FILES.sort(()=>0.5-Math.random())
-       .slice(0,STREAM_RECOMMEND)
+  // tampilkan video rekomendasi
+  list.innerHTML = "";
+  FILES.sort(()=>0.5 - Math.random())
+       .slice(0, STREAM_RECOMMEND)
        .forEach(renderCard);
 
   startAdOverlayTimer();
 }
 
-/* CLICK OVERLAY */
-overlay.onclick=()=>{
+/* ===================== KLIK OVERLAY ===================== */
+// klik video → trigger iklan → overlay hilang
+overlay.onclick = () => {
   fireAd();
-  overlay.style.display="none";
+  overlay.style.display = "none";
   startAdOverlayTimer();
 };
 
-/* INIT */
-const PAGE=parseInt(new URLSearchParams(location.search).get("page")||"1");
+/* ===================== INIT PAGE ===================== */
+// ambil page dari query ?page=
+const PAGE = parseInt(new URLSearchParams(location.search).get("page") || "1");
 
+// fetch API video
 fetch(API)
-.then(r=>r.json())
-.then(data=>{
-  if(Array.isArray(data)) FILES=data;
-  else if(data.files) FILES=data.files;
-  else if(data.result && data.result.files) FILES=data.result.files;
-  else FILES=[];
+.then(r => r.json())
+.then(data => {
+  // dukung berbagai format response API
+  if(Array.isArray(data)) FILES = data;
+  else if(data.files) FILES = data.files;
+  else if(data.result && data.result.files) FILES = data.result.files;
+  else FILES = [];
 
+  // jika langsung ke halaman stream
   if(location.hash) handleRoute();
   else{
-    FILES.slice((PAGE-1)*HOME_PER_PAGE,PAGE*HOME_PER_PAGE)
+    // render homepage
+    FILES.slice((PAGE-1)*HOME_PER_PAGE, PAGE*HOME_PER_PAGE)
          .forEach(renderCard);
 
-    if(PAGE*HOME_PER_PAGE<FILES.length){
-      pagination.innerHTML=`<a href="?page=${PAGE+1}">Lihat video lainnya →</a>`;
+    // pagination
+    if(PAGE*HOME_PER_PAGE < FILES.length){
+      pagination.innerHTML =
+        `<a href="?page=${PAGE+1}">Lihat video lainnya →</a>`;
     }
   }
 });
 
+// listen perubahan hash URL
 window.addEventListener("hashchange", handleRoute);
 </script>
 
