@@ -9,6 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&display=swap" rel="stylesheet">
 
 <style>
+/* ===================== ROOT ===================== */
 :root{
   --bg:#0b0b0f;
   --card:#15151d;
@@ -18,6 +19,7 @@
 }
 *{box-sizing:border-box}
 
+/* ===================== BODY ===================== */
 body{
   margin:0;
   background:var(--bg);
@@ -25,6 +27,7 @@ body{
   font-family:system-ui,-apple-system,BlinkMacSystemFont,sans-serif;
 }
 
+/* ===================== HEADER ===================== */
 header{background:#000;border-bottom:1px solid #1f1f2a}
 .header-inner{
   max-width:1200px;
@@ -41,8 +44,10 @@ header{background:#000;border-bottom:1px solid #1f1f2a}
   text-decoration:none
 }
 
+/* ===================== LAYOUT ===================== */
 .container{max-width:1200px;margin:auto;padding:16px}
 
+/* ===================== PLAYER ===================== */
 .player{
   display:none;
   background:#000;
@@ -60,48 +65,30 @@ header{background:#000;border-bottom:1px solid #1f1f2a}
   .player iframe{height:240px}
 }
 
-/* =====================================================
-   OVERLAY (POP TRIGGER)
-   ===================================================== */
-
-/*
-SEBELUMNYA:
-- ada background gelap
-- ada animasi pulse
-- ada teks "TAP TO CONTINUE"
-
-SEKARANG:
-- overlay tetap ADA
-- tapi 100% TRANSPARAN
-- TIDAK ADA efek visual sama sekali
-*/
+/* ===================== OVERLAY (100% INVISIBLE) ===================== */
 #playerOverlay{
   position:absolute;
   inset:0;
-  background:transparent; /* <<< INI YANG DIUBAH (hapus efek gelap) */
+  background:#000;   /* warna bebas */
+  opacity:0;         /* <<< KUNCI: transparan total */
   cursor:pointer;
   z-index:3;
+  pointer-events:auto;
 }
 
-/* animation:pulse DIHAPUS AGAR WARNA PLAYER TETAP NATURAL */
-/*
-@keyframes pulse{
-  0%{opacity:.85}
-  50%{opacity:1}
-  100%{opacity:.85}
-}
-*/
-
+/* ===================== INFO ===================== */
 .video-info{display:none;margin-bottom:24px}
 .video-info h1{font-size:18px;margin:8px 0}
 .video-meta{font-size:13px;color:var(--muted)}
 
+/* ===================== GRID ===================== */
 .grid{
   display:grid;
   grid-template-columns:repeat(auto-fill,minmax(160px,1fr));
   gap:14px;
 }
 
+/* ===================== CARD ===================== */
 .card{
   background:linear-gradient(145deg,#1a1a26,#11111b);
   border-radius:16px;
@@ -171,13 +158,9 @@ footer{text-align:center;padding:20px;color:#777;font-size:13px}
 
 <div class="container">
 
+  <!-- ===================== PLAYER ===================== -->
   <div id="playerBox" class="player">
     <iframe id="player" allowfullscreen allow="autoplay; fullscreen"></iframe>
-
-    <!--
-      TAP TO CONTINUE DULUNYA ADA DI SINI
-      SEKARANG DIHAPUS, TINGGAL OVERLAY TRANSPARAN
-    -->
     <div id="playerOverlay"></div>
   </div>
 
@@ -194,18 +177,17 @@ footer{text-align:center;padding:20px;color:#777;font-size:13px}
 <footer>© 2026 Powered by Filemoon</footer>
 
 <script>
-// ================= API & CONFIG =================
-const API = "https://api.filesmoon.site/videos"; // API TETAP DIPAKAI
+/* ===================== CONFIG ===================== */
+const API = "https://api.filesmoon.site/videos";
 const DIRECT_LINK = "https://play.filesmoon.site/ads/go.html";
 const AD_DELAY = 45000;
 const HOME_PER_PAGE = 8;
 const STREAM_RECOMMEND = 6;
 
-// ================= STATE =================
 let FILES=[];
 let adInterval=null;
 
-// ================= ELEMENT =================
+/* ===================== ELEMENT ===================== */
 const list=document.getElementById("videos");
 const pagination=document.getElementById("pagination");
 const playerBox=document.getElementById("playerBox");
@@ -215,25 +197,25 @@ const videoInfo=document.getElementById("videoInfo");
 const videoTitle=document.getElementById("videoTitle");
 const videoDate=document.getElementById("videoDate");
 
-// ================= POP FUNCTION =================
+/* ===================== ADS ===================== */
 function fireAd(){
   const now=Date.now();
   const last=parseInt(localStorage.getItem("last_ad")||"0");
   if(now-last>=AD_DELAY){
     localStorage.setItem("last_ad",now);
-    window.open(DIRECT_LINK,"_blank");
+    window.open(DIRECT_LINK,"_blank"); // pop-under
   }
 }
 
-// overlay tetap muncul ulang tapi TANPA efek visual
+/* overlay muncul ulang tiap 45 detik (tetap invisible) */
 function startAdOverlayTimer(){
   clearInterval(adInterval);
   adInterval=setInterval(()=>{
-    overlay.style.display="block";
+    overlay.style.display="flex";
   },AD_DELAY);
 }
 
-// ================= RENDER =================
+/* ===================== CARD ===================== */
 function renderCard(v){
   const card=document.createElement("div");
   card.className="card";
@@ -248,6 +230,7 @@ function renderCard(v){
   list.appendChild(card);
 }
 
+/* ===================== ROUTER ===================== */
 function handleRoute(){
   const m=location.hash.match(/#\/e\/([\w]+)/);
   if(!m) return;
@@ -257,7 +240,7 @@ function handleRoute(){
 
   player.src=\`https://filemoon.to/e/\${m[1]}\`;
   playerBox.style.display="block";
-  overlay.style.display="block";
+  overlay.style.display="flex";
 
   videoInfo.style.display="block";
   videoTitle.textContent=video.title||"Untitled";
@@ -271,14 +254,14 @@ function handleRoute(){
   startAdOverlayTimer();
 }
 
-// klik overlay = pop, TANPA VISUAL
+/* ===================== CLICK OVERLAY ===================== */
 overlay.onclick=()=>{
   fireAd();
   overlay.style.display="none";
   startAdOverlayTimer();
 };
 
-// ================= INIT =================
+/* ===================== INIT ===================== */
 const PAGE=parseInt(new URLSearchParams(location.search).get("page")||"1");
 
 fetch(API)
