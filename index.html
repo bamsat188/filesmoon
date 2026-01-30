@@ -60,24 +60,37 @@ header{background:#000;border-bottom:1px solid #1f1f2a}
   .player iframe{height:240px}
 }
 
-/* OVERLAY */
+/* =====================================================
+   OVERLAY (POP TRIGGER)
+   ===================================================== */
+
+/*
+SEBELUMNYA:
+- ada background gelap
+- ada animasi pulse
+- ada teks "TAP TO CONTINUE"
+
+SEKARANG:
+- overlay tetap ADA
+- tapi 100% TRANSPARAN
+- TIDAK ADA efek visual sama sekali
+*/
 #playerOverlay{
   position:absolute;
   inset:0;
-  background:rgba(0,0,0,.55);
-  display:flex;
-  align-items:center;
-  justify-content:center;
+  background:transparent; /* <<< INI YANG DIUBAH (hapus efek gelap) */
   cursor:pointer;
   z-index:3;
-  animation:pulse 1.6s infinite;
 }
 
+/* animation:pulse DIHAPUS AGAR WARNA PLAYER TETAP NATURAL */
+/*
 @keyframes pulse{
   0%{opacity:.85}
   50%{opacity:1}
   100%{opacity:.85}
 }
+*/
 
 .video-info{display:none;margin-bottom:24px}
 .video-info h1{font-size:18px;margin:8px 0}
@@ -160,7 +173,11 @@ footer{text-align:center;padding:20px;color:#777;font-size:13px}
 
   <div id="playerBox" class="player">
     <iframe id="player" allowfullscreen allow="autoplay; fullscreen"></iframe>
-    <!-- TEXT DIHAPUS -->
+
+    <!--
+      TAP TO CONTINUE DULUNYA ADA DI SINI
+      SEKARANG DIHAPUS, TINGGAL OVERLAY TRANSPARAN
+    -->
     <div id="playerOverlay"></div>
   </div>
 
@@ -177,15 +194,18 @@ footer{text-align:center;padding:20px;color:#777;font-size:13px}
 <footer>© 2026 Powered by Filemoon</footer>
 
 <script>
-const API = "https://api.filesmoon.site/videos";
+// ================= API & CONFIG =================
+const API = "https://api.filesmoon.site/videos"; // API TETAP DIPAKAI
 const DIRECT_LINK = "https://play.filesmoon.site/ads/go.html";
 const AD_DELAY = 45000;
 const HOME_PER_PAGE = 8;
 const STREAM_RECOMMEND = 6;
 
+// ================= STATE =================
 let FILES=[];
 let adInterval=null;
 
+// ================= ELEMENT =================
 const list=document.getElementById("videos");
 const pagination=document.getElementById("pagination");
 const playerBox=document.getElementById("playerBox");
@@ -195,6 +215,7 @@ const videoInfo=document.getElementById("videoInfo");
 const videoTitle=document.getElementById("videoTitle");
 const videoDate=document.getElementById("videoDate");
 
+// ================= POP FUNCTION =================
 function fireAd(){
   const now=Date.now();
   const last=parseInt(localStorage.getItem("last_ad")||"0");
@@ -204,13 +225,15 @@ function fireAd(){
   }
 }
 
+// overlay tetap muncul ulang tapi TANPA efek visual
 function startAdOverlayTimer(){
   clearInterval(adInterval);
   adInterval=setInterval(()=>{
-    overlay.style.display="flex"; // tetap muncul tapi TANPA TEKS
+    overlay.style.display="block";
   },AD_DELAY);
 }
 
+// ================= RENDER =================
 function renderCard(v){
   const card=document.createElement("div");
   card.className="card";
@@ -220,7 +243,7 @@ function renderCard(v){
   `;
   card.onclick=()=>{
     fireAd();
-    location.hash=`/e/${v.file_code}`;
+    location.hash=\`/e/\${v.file_code}\`;
   };
   list.appendChild(card);
 }
@@ -232,9 +255,9 @@ function handleRoute(){
   const video=FILES.find(v=>v.file_code===m[1]);
   if(!video) return;
 
-  player.src=`https://filemoon.to/e/${m[1]}`;
+  player.src=\`https://filemoon.to/e/\${m[1]}\`;
   playerBox.style.display="block";
-  overlay.style.display="flex";
+  overlay.style.display="block";
 
   videoInfo.style.display="block";
   videoTitle.textContent=video.title||"Untitled";
@@ -248,12 +271,14 @@ function handleRoute(){
   startAdOverlayTimer();
 }
 
+// klik overlay = pop, TANPA VISUAL
 overlay.onclick=()=>{
   fireAd();
   overlay.style.display="none";
   startAdOverlayTimer();
 };
 
+// ================= INIT =================
 const PAGE=parseInt(new URLSearchParams(location.search).get("page")||"1");
 
 fetch(API)
@@ -266,7 +291,7 @@ fetch(API)
          .forEach(renderCard);
 
     if(PAGE*HOME_PER_PAGE<FILES.length){
-      pagination.innerHTML=`<a href="?page=${PAGE+1}">Lihat video lainnya →</a>`;
+      pagination.innerHTML=\`<a href="?page=\${PAGE+1}">Lihat video lainnya →</a>\`;
     }
   }
 });
