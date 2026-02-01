@@ -1,5 +1,28 @@
-export async function onRequest() {
+export async function onRequest({ request }) {
 
+  // 🔒 DOMAIN YANG DIIZINKAN
+  const ALLOWED_DOMAINS = [
+    "filesmoon.pages.dev",
+    // tambahkan domain kamu kalau pakai custom domain
+    // "filesmoon.com"
+  ]
+
+  const origin = request.headers.get("Origin") || ""
+  const referer = request.headers.get("Referer") || ""
+
+  const allowed = ALLOWED_DOMAINS.some(d =>
+    origin.includes(d) || referer.includes(d)
+  )
+
+  // ❌ BLOCK JIKA BUKAN DARI DOMAIN SENDIRI
+  if (!allowed) {
+    return new Response(
+      JSON.stringify({ error: "Forbidden" }),
+      { status: 403 }
+    )
+  }
+
+  // ✅ LANJUT KE ZONE
   const res = await fetch(
     "https://zone.filesmoon.site/videos",
     {
