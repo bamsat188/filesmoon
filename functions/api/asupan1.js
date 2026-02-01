@@ -3,14 +3,16 @@ export async function onRequest() {
     const res = await fetch("https://zone.filesmoon.site/videos", {
       headers: {
         "User-Agent": "Mozilla/5.0",
-        // 🔑 WAJIB – ini kunci lolos whitelist
-        "X-Internal-Token": "pages_internal_ok"
+        "X-Internal-Token": "pages_internal_ok" // 🔑 KUNCI UTAMA
       }
     });
 
     if (!res.ok) {
       return new Response(
-        JSON.stringify({ error: "Upstream API error", status: res.status }),
+        JSON.stringify({
+          error: "Upstream API error",
+          status: res.status
+        }),
         { status: 500 }
       );
     }
@@ -33,7 +35,10 @@ export async function onRequest() {
 
   } catch (e) {
     return new Response(
-      JSON.stringify({ error: "Server exception", message: e.message }),
+      JSON.stringify({
+        error: "Server exception",
+        message: e.message
+      }),
       { status: 500 }
     );
   }
