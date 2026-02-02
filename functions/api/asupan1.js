@@ -4,7 +4,7 @@ export async function onRequest({ request }) {
   const ALLOWED_DOMAINS = [
     "filesmoon.pages.dev",
     // tambahkan domain kamu kalau pakai custom domain
-    // "filesmoon.com"
+   "play.filesmoon.site"
   ]
 
   const origin = request.headers.get("Origin") || ""
