@@ -32,22 +32,17 @@ header{background:#000;border-bottom:1px solid #1f1f2a}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px}
 .card{background:linear-gradient(145deg,#1a1a26,#11111b);border-radius:16px;cursor:pointer;overflow:hidden;transition:.3s}
 .card:hover{transform:translateY(-6px) scale(1.02)}
-.thumb{width:100%;padding-top:56.25%;background-size:cover;background-position:center;position:relative}
+.thumb{width:100%;padding-top:56.25%;background:#000;position:relative}
 .thumb::before{content:"";position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,.25),rgba(0,0,0,.7))}
 .thumb::after{
   content:"VIDEO";
-  position:absolute;
-  top:50%;left:50%;
+  position:absolute;top:50%;left:50%;
   transform:translate(-50%,-50%);
   font-family:'Orbitron',sans-serif;
-  font-size:28px;
-  letter-spacing:3px;
-  color:var(--accent)
+  font-size:28px;letter-spacing:3px;color:var(--accent)
 }
 .info{padding:12px}
 .title{margin:0;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.pagination{text-align:center;margin:28px 0}
-.pagination a{padding:10px 18px;background:#1f1f2a;border-radius:8px;color:#fff;text-decoration:none}
 footer{text-align:center;padding:20px;color:#777;font-size:13px}
 </style>
 </head>
@@ -74,7 +69,6 @@ footer{text-align:center;padding:20px;color:#777;font-size:13px}
   </div>
 
   <div id="videos" class="grid"></div>
-  <div id="pagination" class="pagination"></div>
 
 </div>
 
@@ -82,25 +76,17 @@ footer{text-align:center;padding:20px;color:#777;font-size:13px}
 
 <script>
 /* ================= CONFIG ================= */
-const API_WORKER = "https://play.filesmoon.site/api/videos";
-const HOME_PER_PAGE = 12;
-const STREAM_RECOMMEND = 6;
+const API = "https://filemoonapi.com/api/file/list?key=107242cw1es4xgd2p0u04j";
+const RENDER_LIMIT = 12;
 
-/* ================= ADS ==================== */
-const DIRECT_LINKS = ["https://site1.com"];
-const AD_DELAY = 25000;
-let adInterval = null;
-
-/* ================= CACHE ================== */
-const CACHE_KEY = "filesmoon_cache";
-const CACHE_TTL = 1000 * 60 * 60 * 12;
-
-/* ================= VAR ==================== */
-let FILES = [];
+/* ================= STATE ================== */
+let page = 1;
+let isLoading = false;
+let hasMore = true;
+const loaded = new Set();
 
 /* ================= DOM ==================== */
 const list = document.getElementById("videos");
-const pagination = document.getElementById("pagination");
 const playerBox = document.getElementById("playerBox");
 const player = document.getElementById("player");
 const overlay = document.getElementById("playerOverlay");
@@ -108,135 +94,97 @@ const videoInfo = document.getElementById("videoInfo");
 const videoTitle = document.getElementById("videoTitle");
 const videoDate = document.getElementById("videoDate");
 
-/* ================= ADS FUNC =============== */
-function getRandomDirectLink(){
-  return DIRECT_LINKS[Math.floor(Math.random()*DIRECT_LINKS.length)];
-}
+/* ================= ADS ==================== */
+const DIRECT_LINKS = ["https://site1.com"]; // ganti sesuai kebutuhan
+const AD_DELAY = 25000;
+let adTimer = null;
 
 function fireAd(){
-  const now = Date.now();
-  const last = parseInt(localStorage.getItem("last_ad")||"0");
-  if(now - last >= AD_DELAY){
-    localStorage.setItem("last_ad", now);
-    window.open(getRandomDirectLink(), "_blank");
+  const last = Number(localStorage.getItem("last_ad") || 0);
+  if(Date.now() - last > AD_DELAY){
+    localStorage.setItem("last_ad", Date.now());
+    window.open(DIRECT_LINKS[0], "_blank");
   }
 }
 
-function startAdOverlayTimer(){
-  clearInterval(adInterval);
-  adInterval = setInterval(()=>{
-    overlay.style.display="flex";
-  }, AD_DELAY);
+function startAdTimer(){
+  clearInterval(adTimer);
+  adTimer = setInterval(()=>{ overlay.style.display="flex"; }, AD_DELAY);
 }
 
-/* ================= CACHE FUNC ============= */
-function getCachedVideos(){
-  try{
-    const raw = localStorage.getItem(CACHE_KEY);
-    if(!raw) return null;
-    const cache = JSON.parse(raw);
-    if(Date.now() - cache.time > CACHE_TTL) return null;
-    return cache.data;
-  }catch(e){ return null }
-}
-
-function setCachedVideos(data){
-  localStorage.setItem(CACHE_KEY, JSON.stringify({
-    time: Date.now(),
-    data
-  }));
+/* ================= PLAYER ================= */
+function openVideo(id, title="Untitled", date="–"){
+  player.src = `https://filemoon.to/e/${id}`;
+  playerBox.style.display = "block";
+  videoInfo.style.display = "block";
+  overlay.style.display = "flex";
+  videoTitle.textContent = title;
+  videoDate.textContent = date;
+  startAdTimer();
 }
 
 /* ================= RENDER ================= */
 function renderCard(v){
+  if(loaded.has(v.file_code)) return;
+  loaded.add(v.file_code);
+
   const card = document.createElement("div");
   card.className="card";
   card.innerHTML=`
-    <div class="thumb" style="background-image:url('${v.thumb||""}')"></div>
-    <div class="info"><p class="title">${v.title||"Untitled Video"}</p></div>
+    <div class="thumb"></div>
+    <div class="info"><p class="title">${v.title || "Untitled Video"}</p></div>
   `;
   card.onclick=()=>{
     fireAd();
-    location.hash=`/e/${v.file_code}`;
+    location.hash = `/e/${v.file_code}`;
   };
   list.appendChild(card);
 }
 
-/* ================= ROUTE ================== */
+/* ================= LOAD LIST ================= */
+async function loadNext(){
+  if(isLoading || !hasMore) return;
+  isLoading = true;
+  try{
+    const res = await fetch(`${API}&page=${page}`, { cache:"no-store" });
+    const raw = await res.json();
+    const files = raw?.result?.files || [];
+    if(!files.length){ hasMore=false; return; }
+    files.slice(0, RENDER_LIMIT).forEach(renderCard);
+    page++;
+  }catch(e){ console.error(e); }
+  finally{ isLoading=false; }
+}
+
+/* ================= ROUTE ================= */
 function handleRoute(){
   const m = location.hash.match(/#\/e\/([\w]+)/);
   if(!m) return;
-
-  const video = FILES.find(v=>v.file_code===m[1]);
-  if(!video) return;
-
-  player.src=`https://filemoon.to/e/${m[1]}`;
-  playerBox.style.display="block";
-  videoInfo.style.display="block";
-  overlay.style.display="flex";
-
-  videoTitle.textContent=video.title||"Untitled";
-  videoDate.textContent=video.uploaded||"–";
-
-  list.innerHTML="";
-  FILES.slice(0,STREAM_RECOMMEND).forEach(renderCard);
-  startAdOverlayTimer();
+  fireAd();
+  openVideo(m[1]); // LANGSUNG PLAY (tanpa list)
 }
 
-/* ================= LOAD =================== */
-const PAGE = parseInt(new URLSearchParams(location.search).get("page")||"1");
-
-async function loadVideos(page=1){
-  try{
-    let cached = getCachedVideos();
-    if(cached){
-      FILES = cached;
-    }else{
-      const res = await fetch(API_WORKER, { mode:"cors", cache:"no-store" });
-      const raw = await res.json();
-
-      FILES =
-        raw?.files ||
-        raw?.result?.files ||
-        raw?.data?.videos ||
-        raw ||
-        [];
-
-      setCachedVideos(FILES);
-    }
-
-    list.innerHTML="";
-    pagination.innerHTML="";
-
-    if(location.hash){
-      handleRoute();
-    }else{
-      FILES
-        .slice((page-1)*HOME_PER_PAGE,page*HOME_PER_PAGE)
-        .forEach(renderCard);
-
-      if(page*HOME_PER_PAGE < FILES.length){
-        pagination.innerHTML=
-          `<a href="?page=${page+1}" onclick="loadVideos(${page+1});return false;">
-            Lihat video lainnya →
-          </a>`;
-      }
-    }
-  }catch(e){
-    console.error(e);
-    list.innerHTML="<p style='color:red;text-align:center'>Gagal memuat video</p>";
+/* ================= SCROLL ================= */
+window.addEventListener("scroll", ()=>{
+  if(window.innerHeight + window.scrollY > document.body.offsetHeight - 300){
+    loadNext();
   }
-}
+});
 
 /* ================= EVENTS ================= */
 overlay.onclick=()=>{
   fireAd();
   overlay.style.display="none";
-  startAdOverlayTimer();
+  startAdTimer();
 };
 
-loadVideos(PAGE);
-window.addEventListener("hashchange",handleRoute);
+/* ================= INIT ================= */
+if(location.hash.startsWith("#/e/")){
+  handleRoute();   // directlink dulu
+}else{
+  loadNext();     // homepage infinite
+}
+window.addEventListener("hashchange", handleRoute);
 </script>
 
 </body>
