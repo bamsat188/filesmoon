@@ -1,34 +1,36 @@
 export async function onRequest({ request }) {
-  // 🔒 DOMAIN YANG DIIZINKAN
   const ALLOWED_DOMAINS = [
     "filesmoon.pages.dev",
     "play.filesmoon.site",
-    // tambahkan domain custom lain kalau ada
   ]
 
   const origin = request.headers.get("Origin") || ""
   const referer = request.headers.get("Referer") || ""
 
-  // ✅ Cek apakah request dari domain yang diizinkan
   const allowed = ALLOWED_DOMAINS.some(d =>
     origin.includes(d) || referer.includes(d)
   )
 
-  // ❌ Block hanya jika ada Origin/Referer tapi bukan domain diizinkan
-  // 🔹 Kalau Origin/Referer kosong (iframe atau Pages.dev) tetap lanjut
-  if ((origin || referer) && !allowed) {
-    return new Response(
-      JSON.stringify({ error: "Forbidden" }),
-      { status: 403 }
-    )
+  // Handle preflight CORS request
+  if (request.method === "OPTIONS") {
+    return new Response(null, {
+      headers: {
+        "Access-Control-Allow-Origin": origin || "*",
+        "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+        "Access-Control-Allow-Headers": "*",
+        "Access-Control-Max-Age": "86400"
+      }
+    })
   }
 
-  // ✅ Fetch data dari Zone
+  // Block request jika ada Origin/Referer tapi bukan allowed
+  if ((origin || referer) && !allowed) {
+    return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403 })
+  }
+
   try {
     const res = await fetch("https://zone.filesmoon.site/videos", {
-      headers: {
-        "X-INTERNAL-TOKEN": "pages_internal_ok"
-      }
+      headers: { "X-INTERNAL-TOKEN": "pages_internal_ok" }
     })
 
     if (!res.ok) {
@@ -43,7 +45,10 @@ export async function onRequest({ request }) {
     return new Response(data, {
       headers: {
         "Content-Type": "application/json",
-        "Cache-Control": "public, max-age=60"
+        "Cache-Control": "public, max-age=60",
+        "Access-Control-Allow-Origin": origin || "*",
+        "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+        "Access-Control-Allow-Headers": "*"
       }
     })
   } catch (err) {
