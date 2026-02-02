@@ -6,29 +6,145 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
 <style>
-body{margin:0;background:#000;color:#fff;font-family:system-ui}
-header{padding:14px 20px;background:#000;border-bottom:1px solid #222}
-.logo{color:#e50914;font-weight:700;font-size:22px}
-.container{max-width:1100px;margin:auto;padding:16px}
-.player{display:none;background:#000;border-radius:16px;overflow:hidden;margin-bottom:16px;position:relative}
-.player iframe{width:100%;height:520px;border:0}
-@media(max-width:768px){.player iframe{height:260px}}
-#playerOverlay{position:absolute;inset:0;cursor:pointer}
-.video-info{display:none;margin-bottom:20px}
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px}
-.card{background:#111;border-radius:12px;cursor:pointer;overflow:hidden}
-.thumb{padding-top:56%;background:#222;display:flex;align-items:center;justify-content:center}
-.thumb span{color:#e50914;font-weight:700}
-.title{padding:10px;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.pagination{text-align:center;margin:20px}
-.pagination a{padding:10px 16px;background:#222;color:#fff;border-radius:8px;text-decoration:none}
+:root{
+  --bg:#000;
+  --card:#14141c;
+  --accent:#e50914;
+  --text:#fff;
+  --muted:#aaa;
+}
+
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui}
+
+header{
+  background:#000;
+  border-bottom:1px solid #222;
+}
+.header-inner{
+  max-width:1200px;
+  margin:auto;
+  padding:14px 20px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+.logo{
+  color:var(--accent);
+  font-weight:700;
+  font-size:22px;
+  text-decoration:none;
+}
+
+.container{
+  max-width:1200px;
+  margin:auto;
+  padding:16px;
+}
+
+/* PLAYER */
+.player{
+  display:none;
+  background:#000;
+  border-radius:16px;
+  overflow:hidden;
+  margin-bottom:16px;
+  position:relative;
+}
+.player iframe{
+  width:100%;
+  height:520px;
+  border:0;
+}
+@media(max-width:768px){
+  .player iframe{height:260px}
+}
+#playerOverlay{
+  position:absolute;
+  inset:0;
+  cursor:pointer;
+}
+
+/* INFO */
+.video-info{
+  display:none;
+  margin-bottom:20px;
+}
+.video-info h2{
+  margin:8px 0;
+}
+.video-info small{
+  color:var(--muted);
+}
+
+/* GRID */
+.grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(160px,1fr));
+  gap:14px;
+}
+
+/* CARD */
+.card{
+  background:linear-gradient(145deg,#1b1b25,#0f0f17);
+  border-radius:16px;
+  cursor:pointer;
+  overflow:hidden;
+  transition:.3s;
+}
+.card:hover{
+  transform:translateY(-6px) scale(1.02);
+}
+.thumb{
+  position:relative;
+  padding-top:56.25%;
+  background:#222;
+}
+.thumb::after{
+  content:"▶";
+  position:absolute;
+  inset:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:46px;
+  color:var(--accent);
+  opacity:.85;
+}
+.info{
+  padding:12px;
+}
+.title{
+  font-size:14px;
+  font-weight:600;
+  line-height:1.3;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+/* PAGINATION */
+.pagination{
+  text-align:center;
+  margin:24px 0;
+}
+.pagination a{
+  padding:10px 18px;
+  background:#1f1f2a;
+  border-radius:8px;
+  color:#fff;
+  text-decoration:none;
+}
 </style>
 </head>
 
 <body>
 
 <header>
-  <div class="logo">Filesmoon</div>
+  <div class="header-inner">
+    <a href="/" class="logo" onclick="goHome(event)">Filesmoon</a>
+    <span style="font-size:13px;color:#aaa">Filemoon Streaming</span>
+  </div>
 </header>
 
 <div class="container">
@@ -52,13 +168,17 @@ header{padding:14px 20px;background:#000;border-bottom:1px solid #222}
 /* ================= CONFIG ================= */
 const API = "https://filemoonapi.com/api/file/list?key=107242cw1es4xgd2p0u04j";
 const PER_PAGE = 12;
-const TITLE_CACHE = {};
 
-/* ================= VAR ================= */
+/* ================= ADS ==================== */
+const DIRECT_LINKS = ["https://site1.com"];
+const AD_DELAY = 25000;
+let adTimer = null;
+
+/* ================= VAR ==================== */
 let FILES = [];
 let PAGE = parseInt(new URLSearchParams(location.search).get("page")||"1");
 
-/* ================= DOM ================= */
+/* ================= DOM ==================== */
 const list = document.getElementById("videos");
 const pagination = document.getElementById("pagination");
 const playerBox = document.getElementById("playerBox");
@@ -68,28 +188,28 @@ const videoInfo = document.getElementById("videoInfo");
 const videoTitle = document.getElementById("videoTitle");
 const videoDate = document.getElementById("videoDate");
 
-/* ================= API ================= */
+/* ================= ADS FUNC =============== */
+function randomAd(){
+  return DIRECT_LINKS[Math.floor(Math.random()*DIRECT_LINKS.length)];
+}
+function fireAd(){
+  const now = Date.now();
+  const last = parseInt(localStorage.getItem("last_ad")||"0");
+  if(now - last >= AD_DELAY){
+    localStorage.setItem("last_ad", now);
+    window.open(randomAd(), "_blank");
+  }
+}
+function startAdTimer(){
+  clearInterval(adTimer);
+  adTimer = setInterval(()=>overlay.style.display="block", AD_DELAY);
+}
+
+/* ================= API ==================== */
 async function fetchPage(page){
   const res = await fetch(`${API}&page=${page}`, { cache:"no-store" });
   const json = await res.json();
   return json?.result?.files || [];
-}
-
-/* ================= FIND META ================= */
-async function findVideoMeta(id, maxPage=10){
-  if(TITLE_CACHE[id]) return TITLE_CACHE[id];
-
-  for(let p=1;p<=maxPage;p++){
-    const files = await fetchPage(p);
-    if(!files.length) break;
-
-    const found = files.find(v=>v.file_code===id);
-    if(found){
-      TITLE_CACHE[id] = found;
-      return found;
-    }
-  }
-  return null;
 }
 
 /* ================= RENDER ================= */
@@ -97,52 +217,74 @@ function renderCard(v){
   const el = document.createElement("div");
   el.className="card";
   el.innerHTML=`
-    <div class="thumb"><span>VIDEO</span></div>
-    <div class="title">${v.title||"Untitled"}</div>
+    <div class="thumb"></div>
+    <div class="info">
+      <div class="title">${v.title||"Untitled Video"}</div>
+    </div>
   `;
-  el.onclick=()=>location.hash=`/e/${v.file_code}`;
+  el.onclick=()=>{
+    fireAd();
+    location.hash=`/e/${v.file_code}`;
+  };
   list.appendChild(el);
 }
 
 /* ================= PLAYER ================= */
 async function openVideo(id){
-  player.src = `https://filemoon.to/e/${id}`;
+  fireAd();
+  player.src=`https://filemoon.to/e/${id}`;
   playerBox.style.display="block";
   videoInfo.style.display="block";
-  videoTitle.textContent="Loading title...";
+  overlay.style.display="block";
+  startAdTimer();
 
-  const meta = await findVideoMeta(id);
-  if(meta){
-    videoTitle.textContent = meta.title || "Untitled";
-    videoDate.textContent = meta.uploaded || "–";
+  videoTitle.textContent="Loading...";
+  const found = FILES.find(v=>v.file_code===id);
+  if(found){
+    videoTitle.textContent=found.title||"Untitled";
+    videoDate.textContent=found.uploaded||"–";
   }else{
-    videoTitle.textContent = "Untitled";
+    videoTitle.textContent="Untitled";
   }
 }
 
-/* ================= ROUTE ================= */
+/* ================= ROUTE ================== */
 function handleRoute(){
   const m = location.hash.match(/#\/e\/([\w]+)/);
   if(!m) return;
   openVideo(m[1]);
 }
 
-/* ================= LOAD ================= */
+/* ================= HOME =================== */
 async function loadHome(){
   FILES = await fetchPage(PAGE);
   list.innerHTML="";
   FILES.slice(0,PER_PAGE).forEach(renderCard);
 
-  pagination.innerHTML = `
+  pagination.innerHTML=`
     <a href="?page=${PAGE+1}" onclick="PAGE++;loadHome();return false">
-      Load More →
+      Load more →
     </a>`;
 }
 
-/* ================= INIT ================= */
-overlay.onclick=()=>overlay.style.display="none";
-window.addEventListener("hashchange",handleRoute);
+/* ================= NAV ==================== */
+function goHome(e){
+  e.preventDefault();
+  history.pushState("",document.title,window.location.pathname);
+  player.src="";
+  playerBox.style.display="none";
+  videoInfo.style.display="none";
+  loadHome();
+}
 
+/* ================= INIT =================== */
+overlay.onclick=()=>{
+  fireAd();
+  overlay.style.display="none";
+  startAdTimer();
+};
+
+window.addEventListener("hashchange",handleRoute);
 loadHome();
 handleRoute();
 </script>
