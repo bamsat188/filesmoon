@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <title>Filesmoon</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Streaming video Filemoon cepat, ringan, dan responsif.">
 
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&display=swap" rel="stylesheet">
 
@@ -16,7 +17,7 @@
   --muted:#9a9aab;
 }
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui}
+body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,sans-serif}
 header{background:#000;border-bottom:1px solid #1f1f2a}
 .header-inner{max-width:1200px;margin:auto;padding:14px 20px;display:flex;justify-content:space-between;align-items:center}
 .logo{font-size:22px;font-weight:700;color:var(--accent);text-decoration:none}
@@ -26,48 +27,31 @@ header{background:#000;border-bottom:1px solid #1f1f2a}
 .player iframe{width:100%;height:520px;border:0}
 @media(max-width:768px){.player iframe{height:240px}}
 
-#playerOverlay{position:absolute;inset:0;cursor:pointer;z-index:5}
+#playerOverlay{position:absolute;inset:0;display:flex;cursor:pointer;z-index:3}
 
-.video-info{display:none;margin-bottom:20px}
+.video-info{display:none;margin-bottom:24px}
 .video-info h1{font-size:18px;margin:8px 0}
+.video-meta{font-size:13px;color:var(--muted)}
 
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px}
-
-.card{
-  background:linear-gradient(145deg,#1a1a26,#11111b);
-  border-radius:16px;
-  cursor:pointer;
-  overflow:hidden;
-  transition:.25s;
-}
-.card:hover{transform:translateY(-6px)}
-
-.thumb{
-  width:100%;
-  padding-top:56.25%;
-  position:relative;
-  background:#000;
-}
+.card{background:linear-gradient(145deg,#1a1a26,#11111b);border-radius:16px;cursor:pointer;overflow:hidden;transition:.3s}
+.card:hover{transform:translateY(-6px) scale(1.02)}
+.thumb{width:100%;padding-top:56.25%;background:#000;position:relative}
 .thumb::after{
   content:"VIDEO";
   position:absolute;
-  inset:0;
-  display:flex;
-  align-items:center;
-  justify-content:center;
+  top:50%;left:50%;
+  transform:translate(-50%,-50%);
   font-family:'Orbitron',sans-serif;
   font-size:26px;
-  color:var(--accent);
   letter-spacing:3px;
+  color:var(--accent)
 }
+.info{padding:12px}
+.title{margin:0;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
-.info{padding:10px}
-.title{
-  font-size:14px;
-  white-space:nowrap;
-  overflow:hidden;
-  text-overflow:ellipsis;
-}
+.pagination{text-align:center;margin:28px 0}
+.pagination a{padding:10px 18px;background:#1f1f2a;border-radius:8px;color:#fff;text-decoration:none}
 
 footer{text-align:center;padding:20px;color:#777;font-size:13px}
 </style>
@@ -77,7 +61,7 @@ footer{text-align:center;padding:20px;color:#777;font-size:13px}
 
 <header>
   <div class="header-inner">
-    <a href="/" class="logo">Filesmoon</a>
+    <a href="#/" class="logo">Filesmoon</a>
     <span style="font-size:13px;color:#aaa">Filemoon Streaming</span>
   </div>
 </header>
@@ -85,15 +69,17 @@ footer{text-align:center;padding:20px;color:#777;font-size:13px}
 <div class="container">
 
   <div id="playerBox" class="player">
-    <iframe id="player" allowfullscreen allow="autoplay"></iframe>
+    <iframe id="player" allowfullscreen allow="autoplay; fullscreen"></iframe>
     <div id="playerOverlay"></div>
   </div>
 
   <div id="videoInfo" class="video-info">
-    <h1 id="videoTitle">Streaming Video</h1>
+    <h1 id="videoTitle"></h1>
+    <div class="video-meta">📅 <span id="videoDate">–</span></div>
   </div>
 
   <div id="videos" class="grid"></div>
+  <div id="pagination" class="pagination"></div>
 
 </div>
 
@@ -101,33 +87,58 @@ footer{text-align:center;padding:20px;color:#777;font-size:13px}
 
 <script>
 /* ================= CONFIG ================= */
-const API = "https://filemoonapi.com/api/file/list?key=107242cw1es4xgd2p0u04j";
-const PER_PAGE = 12;
+const API_JSON = "https://raw.githubusercontent.com/bamsat188/listapi/main/videos.json";
+const HOME_PER_PAGE = 12;
 const STREAM_RECOMMEND = 6;
 
-/* ================= ADS ================= */
+/* ================= ADS ==================== */
 const DIRECT_LINKS = ["https://site1.com"];
-const AD_DELAY = 45000;
+const AD_DELAY = 25000;
+let adInterval = null;
 
-/* ================= VAR ================= */
+/* ================= CACHE ================== */
+const CACHE_KEY = "filesmoon_cache";
+const CACHE_TTL = 1000 * 60 * 60 * 12;
+
+/* ================= VAR ==================== */
 let FILES = [];
-let lastAd = 0;
 
-/* ================= DOM ================= */
+/* ================= DOM ==================== */
 const list = document.getElementById("videos");
+const pagination = document.getElementById("pagination");
 const playerBox = document.getElementById("playerBox");
 const player = document.getElementById("player");
 const overlay = document.getElementById("playerOverlay");
 const videoInfo = document.getElementById("videoInfo");
 const videoTitle = document.getElementById("videoTitle");
+const videoDate = document.getElementById("videoDate");
 
-/* ================= ADS FUNC ================= */
+/* ================= ADS ==================== */
 function fireAd(){
   const now = Date.now();
-  if(now - lastAd > AD_DELAY){
-    lastAd = now;
-    window.open(DIRECT_LINKS[Math.floor(Math.random()*DIRECT_LINKS.length)],"_blank");
+  const last = parseInt(localStorage.getItem("last_ad")||"0");
+  if(now - last >= AD_DELAY){
+    localStorage.setItem("last_ad", now);
+    window.open(DIRECT_LINKS[0], "_blank");
   }
+}
+function startAdOverlayTimer(){
+  clearInterval(adInterval);
+  adInterval = setInterval(()=>overlay.style.display="flex", AD_DELAY);
+}
+
+/* ================= CACHE ================== */
+function getCache(){
+  try{
+    const raw = localStorage.getItem(CACHE_KEY);
+    if(!raw) return null;
+    const c = JSON.parse(raw);
+    if(Date.now() - c.time > CACHE_TTL) return null;
+    return c.data;
+  }catch{ return null }
+}
+function setCache(data){
+  localStorage.setItem(CACHE_KEY, JSON.stringify({time:Date.now(),data}));
 }
 
 /* ================= RENDER ================= */
@@ -136,56 +147,111 @@ function renderCard(v){
   card.className="card";
   card.innerHTML=`
     <div class="thumb"></div>
-    <div class="info">
-      <div class="title">${v.title || "Untitled Video"}</div>
-    </div>
+    <div class="info"><p class="title">${v.title}</p></div>
   `;
   card.onclick=()=>{
     fireAd();
-    location.hash = "/e/" + v.file_code;
+    location.hash=`/e/${v.file_code}`;
   };
   list.appendChild(card);
 }
 
-/* ================= STREAM ROUTE ================= */
-function handleRoute(){
-  const m = location.hash.match(/#\/e\/([\w]+)/);
-  if(!m) return;
-
-  const code = m[1];
-
-  player.src = "https://filemoon.to/e/" + code;
-  playerBox.style.display="block";
-  videoInfo.style.display="block";
-
-  const found = FILES.find(v=>v.file_code===code);
-  videoTitle.textContent = found?.title || "Streaming Video";
-
-  list.innerHTML="";
-  FILES
-    .filter(v=>v.file_code!==code)
-    .sort(()=>0.5-Math.random())
-    .slice(0,STREAM_RECOMMEND)
-    .forEach(renderCard);
-
-  window.scrollTo({top:0,behavior:"smooth"});
+/* ================= ROUTER ================= */
+function getVideoId(){
+  const m = location.hash.match(/^#\/e\/([\w]+)/);
+  return m ? m[1] : null;
 }
 
-/* ================= LOAD ================= */
-fetch(API)
-.then(r=>r.json())
-.then(d=>{
-  FILES = d?.result?.files || d?.files || d || [];
-  FILES.slice(0,PER_PAGE).forEach(renderCard);
-  if(location.hash) handleRoute();
-})
-.catch(()=>{
-  list.innerHTML="<p style='color:red'>Gagal load video</p>";
-});
+function handleRoute(){
+  const id = getVideoId();
+  if(!id){
+    playerBox.style.display="none";
+    videoInfo.style.display="none";
+    return;
+  }
 
-overlay.onclick=fireAd;
+  const video = FILES.find(v=>v.file_code===id);
+  if(!video){
+    location.hash="#/";
+    return;
+  }
+
+  window.scrollTo({top:0,behavior:"smooth"});
+
+  player.src=`https://filemoon.sx/e/${id}`;
+  playerBox.style.display="block";
+  videoInfo.style.display="block";
+  overlay.style.display="flex";
+
+  document.title = video.title;
+  videoTitle.textContent = video.title;
+  videoDate.textContent = video.uploaded || "–";
+
+  list.innerHTML="";
+  FILES.slice(0,STREAM_RECOMMEND).forEach(renderCard);
+  startAdOverlayTimer();
+}
+
+/* ================= LOAD =================== */
+const PAGE = parseInt(new URLSearchParams(location.search).get("page")||"1");
+
+async function loadVideos(){
+  try{
+    let data = getCache();
+    if(!data){
+      const res = await fetch(API_JSON);
+      const raw = await res.json();
+
+      data = Object.entries(raw.videos).map(([id,v])=>({
+        file_code:id,
+        title:v.title || "Untitled",
+        uploaded:v.uploaded || ""
+      }));
+
+      setCache(data);
+    }
+
+    FILES = data;
+    list.innerHTML="";
+    pagination.innerHTML="";
+
+    if(getVideoId()){
+      handleRoute();
+    }else{
+      FILES.slice((PAGE-1)*HOME_PER_PAGE,PAGE*HOME_PER_PAGE)
+        .forEach(renderCard);
+
+      if(PAGE*HOME_PER_PAGE < FILES.length){
+        pagination.innerHTML=`<a href="?page=${PAGE+1}">Lihat video lainnya →</a>`;
+      }
+    }
+  }catch(e){
+    console.error(e);
+    list.innerHTML="<p style='color:red;text-align:center'>Gagal memuat video</p>";
+  }
+}
+
+/* ================= EVENTS ================= */
+overlay.onclick=()=>{
+  fireAd();
+  overlay.style.display="none";
+  startAdOverlayTimer();
+};
 window.addEventListener("hashchange",handleRoute);
-</script>
 
+loadVideos();
+</script>
+ <!-- Histats.com  START  (aync)-->
+<script type="text/javascript">var _Hasync= _Hasync|| [];
+_Hasync.push(['Histats.start', '1,5005360,4,0,0,0,00010000']);
+_Hasync.push(['Histats.fasi', '1']);
+_Hasync.push(['Histats.track_hits', '']);
+(function() {
+var hs = document.createElement('script'); hs.type = 'text/javascript'; hs.async = true;
+hs.src = ('//s10.histats.com/js15_as.js');
+(document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(hs);
+})();</script>
+<noscript><a href="/" target="_blank"><img  src="//sstatic1.histats.com/0.gif?5005360&101" alt="" border="0"></a></noscript>
+<!-- Histats.com  END  -->
 </body>
 </html>
