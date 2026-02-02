@@ -213,8 +213,8 @@ const DIRECT_LINKS = [
   //"https://site2.com" // contoh jika ingin OFF
 ];
 
-const AD_DELAY = 45000;        // Delay iklan 45 detik
-const HOME_PER_PAGE = 8;       // jumlah video per halaman utama
+const AD_DELAY = 25000;        // Delay iklan 45 detik
+const HOME_PER_PAGE = 12;       // jumlah video per halaman utama
 const STREAM_RECOMMEND = 6;    // jumlah video rekomendasi saat streaming
 let FILES = [];                // array menampung data video
 let adInterval = null;
@@ -336,6 +336,17 @@ fetch(API)
 // event hashchange untuk navigasi hash
 window.addEventListener("hashchange", handleRoute);
 </script>
-
+ <!-- Histats.com  START  (aync)-->
+<script type="text/javascript">var _Hasync= _Hasync|| [];
+_Hasync.push(['Histats.start', '1,5005360,4,0,0,0,00010000']);
+_Hasync.push(['Histats.fasi', '1']);
+_Hasync.push(['Histats.track_hits', '']);
+(function() {
+var hs = document.createElement('script'); hs.type = 'text/javascript'; hs.async = true;
+hs.src = ('//s10.histats.com/js15_as.js');
+(document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(hs);
+})();</script>
+<noscript><a href="/" target="_blank"><img  src="//sstatic1.histats.com/0.gif?5005360&101" alt="" border="0"></a></noscript>
+<!-- Histats.com  END  -->
 </body>
 </html>
