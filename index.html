@@ -22,16 +22,72 @@ header{background:#000;border-bottom:1px solid #1f1f2a}
 .header-inner{max-width:1200px;margin:auto;padding:14px 20px;display:flex;justify-content:space-between;align-items:center}
 .logo{font-size:22px;font-weight:700;color:var(--accent);text-decoration:none}
 .container{max-width:1200px;margin:auto;padding:16px}
-.player{display:none;background:#000;border-radius:16px;overflow:hidden;margin-bottom:16px}
-.player iframe{width:100%;height:520px;border:0}
-@media(max-width:768px){.player iframe{height:240px}}
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px}
-.card{background:#15151d;border-radius:14px;cursor:pointer;overflow:hidden}
-.thumb{width:100%;padding-top:56.25%;background-size:cover;background-position:center}
-.info{padding:10px}
-.title{margin:0;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.pagination{text-align:center;margin:28px 0}
-.pagination button{padding:10px 18px;background:#1f1f2a;border:0;border-radius:8px;color:#fff;cursor:pointer}
+
+.grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(160px,1fr));
+  gap:14px;
+}
+
+.card{
+  background:linear-gradient(145deg,#1a1a26,#11111b);
+  border-radius:16px;
+  cursor:pointer;
+  overflow:hidden;
+  transition:.3s;
+}
+.card:hover{transform:translateY(-6px) scale(1.02)}
+
+.thumb{
+  width:100%;
+  padding-top:56.25%;
+  background-size:cover;
+  background-position:center;
+  position:relative;
+}
+.thumb::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  background:linear-gradient(to bottom,rgba(0,0,0,.25),rgba(0,0,0,.7));
+}
+.thumb::after{
+  content:"VIDEO";
+  position:absolute;
+  top:50%;
+  left:50%;
+  transform:translate(-50%,-50%);
+  font-family:'Orbitron',sans-serif;
+  font-size:26px;
+  letter-spacing:3px;
+  color:var(--accent);
+}
+
+.info{padding:12px}
+.title{
+  margin:0;
+  font-size:14px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+#loadMore{
+  margin:30px auto;
+  display:block;
+  background:var(--accent);
+  color:#fff;
+  border:none;
+  padding:12px 24px;
+  border-radius:10px;
+  cursor:pointer;
+  font-size:14px;
+}
+#loadMore:disabled{
+  opacity:.5;
+  cursor:not-allowed;
+}
+
 footer{text-align:center;padding:20px;color:#777;font-size:13px}
 </style>
 </head>
@@ -46,66 +102,62 @@ footer{text-align:center;padding:20px;color:#777;font-size:13px}
 </header>
 
 <div class="container">
-
-  <div id="playerBox" class="player">
-    <iframe id="player" allowfullscreen></iframe>
-  </div>
-
   <div id="videos" class="grid"></div>
-  <div class="pagination">
-    <button id="loadMore">Load lebih banyak</button>
-  </div>
-
+  <button id="loadMore">Load video lainnya</button>
 </div>
 
 <footer>© 2026 Powered by Filemoon</footer>
 
 <script>
-const API = "https://zone.filesmoon.site/videos";
-const PER_PAGE = 24;
-let allVideos = [];
+const API = "/videos";   // PENTING: sesuai Pages Functions
 let page = 1;
+let loading = false;
 
 const list = document.getElementById("videos");
-const playerBox = document.getElementById("playerBox");
-const player = document.getElementById("player");
 const loadMoreBtn = document.getElementById("loadMore");
 
-function render(){
-  const end = page * PER_PAGE;
-  allVideos.slice(0,end).forEach(v=>{
-    if(document.getElementById(v.file_code)) return;
-
-    const card = document.createElement("div");
-    card.className="card";
-    card.id=v.file_code;
-    card.innerHTML=`
-      <div class="thumb" style="background-image:url('${v.thumb||""}')"></div>
-      <div class="info"><p class="title">${v.title||"Untitled"}</p></div>
-    `;
-    card.onclick=()=>{
-      player.src = `https://filemoon.to/e/${v.file_code}`;
-      playerBox.style.display="block";
-      window.scrollTo({top:0,behavior:"smooth"});
-    };
-    list.appendChild(card);
-  });
+function renderCard(v){
+  const card = document.createElement("div");
+  card.className = "card";
+  card.innerHTML = `
+    <div class="thumb" style="background-image:url('${v.thumbnail || ""}')"></div>
+    <div class="info">
+      <p class="title">${v.title || "Untitled Video"}</p>
+    </div>
+  `;
+  card.onclick = () => {
+    location.href = `https://filemoon.to/e/${v.file_code}`;
+  };
+  list.appendChild(card);
 }
 
-fetch(API)
-  .then(r=>r.json())
-  .then(data=>{
-    allVideos = data;
-    render();
-  })
-  .catch(()=>{
-    list.innerHTML="<p style='color:red'>Gagal memuat video</p>";
-  });
+async function loadVideos(){
+  if(loading) return;
+  loading = true;
 
-loadMoreBtn.onclick=()=>{
-  page++;
-  render();
-};
+  try{
+    const res = await fetch(`${API}?page=${page}`);
+    const data = await res.json();
+
+    if(!Array.isArray(data) || data.length === 0){
+      loadMoreBtn.disabled = true;
+      loadMoreBtn.textContent = "Semua video sudah dimuat";
+      return;
+    }
+
+    data.forEach(renderCard);
+    page++;
+
+  }catch(e){
+    alert("Gagal memuat video");
+  }finally{
+    loading = false;
+  }
+}
+
+// load pertama
+loadVideos();
+loadMoreBtn.onclick = loadVideos;
 </script>
 
 </body>
