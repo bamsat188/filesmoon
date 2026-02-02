@@ -2,9 +2,9 @@ export async function onRequest({ request }) {
 
   // 🔒 DOMAIN YANG DIIZINKAN
   const ALLOWED_DOMAINS = [
-    "filesmoon.pages.dev",
+    "play.filesmoon.site",
     // tambahkan domain kamu kalau pakai custom domain
-   "play.filesmoon.site"
+  // "play.filesmoon.site"
   ]
 
   const origin = request.headers.get("Origin") || ""
