@@ -2,21 +2,20 @@ export async function onRequest({ request }) {
   // 🔒 DOMAIN YANG DIIZINKAN
   const ALLOWED_DOMAINS = [
     "filesmoon.pages.dev",
-    "play.filesmoon.site"
+    "play.filesmoon.site",
+    // tambahkan domain custom lain kalau ada
   ]
 
   const origin = request.headers.get("Origin") || ""
   const referer = request.headers.get("Referer") || ""
 
-  // ✅ Cek apakah request datang dari domain yang diizinkan
-  let allowed = false
-  if (origin || referer) {
-    allowed = ALLOWED_DOMAINS.some(d =>
-      origin.includes(d) || referer.includes(d)
-    )
-  }
+  // ✅ Cek apakah request dari domain yang diizinkan
+  const allowed = ALLOWED_DOMAINS.some(d =>
+    origin.includes(d) || referer.includes(d)
+  )
 
-  // ❌ BLOCK jika ada Origin/Referer tapi bukan domain sendiri
+  // ❌ Block hanya jika ada Origin/Referer tapi bukan domain diizinkan
+  // 🔹 Kalau Origin/Referer kosong (iframe atau Pages.dev) tetap lanjut
   if ((origin || referer) && !allowed) {
     return new Response(
       JSON.stringify({ error: "Forbidden" }),
@@ -24,7 +23,7 @@ export async function onRequest({ request }) {
     )
   }
 
-  // ✅ LANJUT KE ZONE
+  // ✅ Fetch data dari Zone
   try {
     const res = await fetch("https://zone.filesmoon.site/videos", {
       headers: {
@@ -34,10 +33,7 @@ export async function onRequest({ request }) {
 
     if (!res.ok) {
       return new Response(
-        JSON.stringify({
-          error: "Upstream API error",
-          status: res.status
-        }),
+        JSON.stringify({ error: "Upstream API error", status: res.status }),
         { status: res.status }
       )
     }
