@@ -34,8 +34,16 @@ header{background:#000;border-bottom:1px solid #1f1f2a}
 .card:hover{transform:translateY(-6px) scale(1.02)}
 .thumb{width:100%;padding-top:56.25%;background-size:cover;background-position:center;position:relative}
 .thumb::before{content:"";position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,.25),rgba(0,0,0,.7))}
-.thumb::after{content:"VIDEO";position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
-font-family:'Orbitron',sans-serif;font-size:28px;letter-spacing:3px;color:var(--accent)}
+.thumb::after{
+  content:"VIDEO";
+  position:absolute;
+  top:50%;left:50%;
+  transform:translate(-50%,-50%);
+  font-family:'Orbitron',sans-serif;
+  font-size:28px;
+  letter-spacing:3px;
+  color:var(--accent)
+}
 .info{padding:12px}
 .title{margin:0;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .pagination{text-align:center;margin:28px 0}
@@ -74,17 +82,23 @@ footer{text-align:center;padding:20px;color:#777;font-size:13px}
 
 <script>
 /* ================= CONFIG ================= */
-const API_WORKER = "https://zone.filesmoon.site/videos";
+const API_WORKER = "https://play.filesmoon.site/api/videos";
 const HOME_PER_PAGE = 12;
 const STREAM_RECOMMEND = 6;
 
-/* ============== CACHE SETUP =============== */
-const CACHE_KEY = "filesmoon_cache";
-const CACHE_TTL = 1000 * 60 * 60 * 12; // 12 jam
+/* ================= ADS ==================== */
+const DIRECT_LINKS = ["https://site1.com"];
+const AD_DELAY = 25000;
+let adInterval = null;
 
+/* ================= CACHE ================== */
+const CACHE_KEY = "filesmoon_cache";
+const CACHE_TTL = 1000 * 60 * 60 * 12;
+
+/* ================= VAR ==================== */
 let FILES = [];
 
-/* ============== ELEMENTS ================== */
+/* ================= DOM ==================== */
 const list = document.getElementById("videos");
 const pagination = document.getElementById("pagination");
 const playerBox = document.getElementById("playerBox");
@@ -94,7 +108,28 @@ const videoInfo = document.getElementById("videoInfo");
 const videoTitle = document.getElementById("videoTitle");
 const videoDate = document.getElementById("videoDate");
 
-/* ============== CACHE FUNC ================ */
+/* ================= ADS FUNC =============== */
+function getRandomDirectLink(){
+  return DIRECT_LINKS[Math.floor(Math.random()*DIRECT_LINKS.length)];
+}
+
+function fireAd(){
+  const now = Date.now();
+  const last = parseInt(localStorage.getItem("last_ad")||"0");
+  if(now - last >= AD_DELAY){
+    localStorage.setItem("last_ad", now);
+    window.open(getRandomDirectLink(), "_blank");
+  }
+}
+
+function startAdOverlayTimer(){
+  clearInterval(adInterval);
+  adInterval = setInterval(()=>{
+    overlay.style.display="flex";
+  }, AD_DELAY);
+}
+
+/* ================= CACHE FUNC ============= */
 function getCachedVideos(){
   try{
     const raw = localStorage.getItem(CACHE_KEY);
@@ -112,7 +147,7 @@ function setCachedVideos(data){
   }));
 }
 
-/* ============== RENDER ==================== */
+/* ================= RENDER ================= */
 function renderCard(v){
   const card = document.createElement("div");
   card.className="card";
@@ -120,11 +155,14 @@ function renderCard(v){
     <div class="thumb" style="background-image:url('${v.thumb||""}')"></div>
     <div class="info"><p class="title">${v.title||"Untitled Video"}</p></div>
   `;
-  card.onclick=()=>{ location.hash=`/e/${v.file_code}` };
+  card.onclick=()=>{
+    fireAd();
+    location.hash=`/e/${v.file_code}`;
+  };
   list.appendChild(card);
 }
 
-/* ============== ROUTER ==================== */
+/* ================= ROUTE ================== */
 function handleRoute(){
   const m = location.hash.match(/#\/e\/([\w]+)/);
   if(!m) return;
@@ -135,16 +173,17 @@ function handleRoute(){
   player.src=`https://filemoon.to/e/${m[1]}`;
   playerBox.style.display="block";
   videoInfo.style.display="block";
-  overlay.style.display="none";
+  overlay.style.display="flex";
 
   videoTitle.textContent=video.title||"Untitled";
   videoDate.textContent=video.uploaded||"–";
 
   list.innerHTML="";
   FILES.slice(0,STREAM_RECOMMEND).forEach(renderCard);
+  startAdOverlayTimer();
 }
 
-/* ============== LOAD VIDEOS =============== */
+/* ================= LOAD =================== */
 const PAGE = parseInt(new URLSearchParams(location.search).get("page")||"1");
 
 async function loadVideos(page=1){
@@ -153,14 +192,14 @@ async function loadVideos(page=1){
     if(cached){
       FILES = cached;
     }else{
-      const res = await fetch(API_WORKER, { cache:"force-cache" });
-      const data = await res.json();
+      const res = await fetch(API_WORKER, { mode:"cors", cache:"no-store" });
+      const raw = await res.json();
 
       FILES =
-        data?.files ||
-        data?.result?.files ||
-        data?.data?.videos ||
-        data ||
+        raw?.files ||
+        raw?.result?.files ||
+        raw?.data?.videos ||
+        raw ||
         [];
 
       setCachedVideos(FILES);
@@ -177,7 +216,7 @@ async function loadVideos(page=1){
         .forEach(renderCard);
 
       if(page*HOME_PER_PAGE < FILES.length){
-        pagination.innerHTML =
+        pagination.innerHTML=
           `<a href="?page=${page+1}" onclick="loadVideos(${page+1});return false;">
             Lihat video lainnya →
           </a>`;
@@ -189,7 +228,13 @@ async function loadVideos(page=1){
   }
 }
 
-/* ============== INIT ====================== */
+/* ================= EVENTS ================= */
+overlay.onclick=()=>{
+  fireAd();
+  overlay.style.display="none";
+  startAdOverlayTimer();
+};
+
 loadVideos(PAGE);
 window.addEventListener("hashchange",handleRoute);
 </script>
