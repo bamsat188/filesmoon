@@ -143,6 +143,8 @@ header{background:#000;border-bottom:1px solid #1f1f2a}
 }
 .info{padding:12px}
 .title{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pagination{display:flex;justify-content:center;gap:12px;margin:16px 0;}
+.pagination button{padding:6px 10px;background:var(--accent);border:none;color:#fff;border-radius:6px;cursor:pointer;}
 footer{text-align:center;padding:20px;color:#777;font-size:13px}
 video::-webkit-media-controls-fullscreen-button{display:none!important;}
 video::-webkit-media-controls-picture-in-picture-button{display:none!important;}
@@ -172,6 +174,11 @@ video::-moz-media-controls-fullscreen-button{display:none!important;}
 </div>
 
 <div id="videos" class="grid"></div>
+
+<div class="pagination">
+  <button id="prevBtn">Prev</button>
+  <button id="nextBtn">Next</button>
+</div>
 </div>
 
 <footer>© 2026 Powered by Videy</footer>
@@ -193,6 +200,9 @@ const adOverlay=document.getElementById("adOverlay");
 const adBanner=document.getElementById("adBanner");
 const fullscreenBtn=document.getElementById("fullscreenBtn");
 const centerPlay=document.getElementById("centerPlay");
+
+const prevBtn=document.getElementById("prevBtn");
+const nextBtn=document.getElementById("nextBtn");
 
 adBanner.href=AD_LINK;
 adBanner.innerHTML=`<img src="${BANNER_IMG}">`;
@@ -245,6 +255,40 @@ player.addEventListener("pause",()=>playerBox.classList.remove("playing"));
 fullscreenBtn.onclick=()=>playerBox.classList.toggle("fullscreen");
 
 let VIDEOS=[];
+let currentPage = 1;
+function renderPage(page){
+  list.innerHTML = "";
+  const start = (page-1) * HOME_PER_PAGE;
+  const end = page * HOME_PER_PAGE;
+  VIDEOS.slice(start,end).forEach(v=>{
+    const c = document.createElement("div");
+    c.className = "card show";
+    c.innerHTML = `<div class="thumb"></div><div class="info"><p class="title">${v.title}</p></div>`;
+    c.onclick = () => {
+      if(cardClickAd){
+        window.open(AD_LINK,"_blank");
+        cardClickAd=false;
+        setTimeout(()=>cardClickAd=true,1000);
+      }
+      location.hash = `/e/${v.embed}`;
+    };
+    list.appendChild(c);
+  });
+}
+
+prevBtn.onclick = () => {
+  if(currentPage > 1){
+    currentPage--;
+    renderPage(currentPage);
+  }
+};
+nextBtn.onclick = () => {
+  if(currentPage * HOME_PER_PAGE < VIDEOS.length){
+    currentPage++;
+    renderPage(currentPage);
+  }
+};
+
 function getVideoId(){
   const m=location.hash.match(/^#\/e\/([\w]+)/);
   return m?m[1]:null;
@@ -259,7 +303,7 @@ function handleRoute(){
   }
   const v=VIDEOS.find(x=>x.embed===id);
   if(!v)return;
-  player.src=`https://cdn.videy.co/${id}.mp4`;
+  player.src=`https://cdn.videy.co/${id}.mp4?ts=${Date.now()}`;
   playerBox.style.display="block";
   videoInfo.style.display="block";
   videoTitle.textContent=v.title;
@@ -270,23 +314,11 @@ fetch(API_JSON)
 .then(r=>r.json())
 .then(j=>{
   VIDEOS=j.videos;
-  VIDEOS.slice(0,HOME_PER_PAGE).forEach(v=>{
-    const c=document.createElement("div");
-    c.className="card show";
-    c.innerHTML=`<div class="thumb"></div><div class="info"><p class="title">${v.title}</p></div>`;
-    c.onclick=()=>{
-      if(cardClickAd){
-        window.open(AD_LINK,"_blank");
-        cardClickAd=false;
-        setTimeout(()=>cardClickAd=true,1000);
-      }
-      location.hash=`/e/${v.embed}`;
-    };
-    list.appendChild(c);
-  });
+  renderPage(currentPage);
   handleRoute();
 });
-window.addEventListener("hashchange",handleRoute);
+
+window.addEventListener("hashchange", handleRoute);
 </script>
 
 </body>
