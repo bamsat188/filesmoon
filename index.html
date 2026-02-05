@@ -151,7 +151,6 @@ video::-webkit-media-controls-picture-in-picture-button{display:none!important;}
 video::-moz-media-controls-fullscreen-button{display:none!important;}
 </style>
 </head>
-
 <body>
 <header>
   <div class="header-inner">
@@ -184,7 +183,7 @@ video::-moz-media-controls-fullscreen-button{display:none!important;}
 <footer>© 2026 Powered by Videy</footer>
 
 <script>
-const API_JSON_ENCODED = "aHR0cHM6Ly9yYXcuZ2l0aHVidXNlcmNvbnRlbnQuY29tL2JhbXNhdDE4OC9saXN0YXBpL21haW4vdmlkZW9zLmpzb24=";
+const API_JSON_ENCODED="aHR0cHM6Ly9yYXcuZ2l0aHVidXNlcmNvbnRlbnQuY29tL2JhbXNhdDE4OC9saXN0YXBpL21haW4vdmlkZW9zLmpzb24=";
 const API_JSON = atob(API_JSON_ENCODED);
 
 const HOME_PER_PAGE=12;
@@ -200,7 +199,6 @@ const adOverlay=document.getElementById("adOverlay");
 const adBanner=document.getElementById("adBanner");
 const fullscreenBtn=document.getElementById("fullscreenBtn");
 const centerPlay=document.getElementById("centerPlay");
-
 const prevBtn=document.getElementById("prevBtn");
 const nextBtn=document.getElementById("nextBtn");
 
@@ -256,6 +254,7 @@ fullscreenBtn.onclick=()=>playerBox.classList.toggle("fullscreen");
 
 let VIDEOS=[];
 let currentPage = 1;
+
 function renderPage(page){
   list.innerHTML = "";
   const start = (page-1) * HOME_PER_PAGE;
@@ -294,20 +293,42 @@ function getVideoId(){
   return m?m[1]:null;
 }
 
+function renderRandomCards(excludeId, count=12){
+  list.innerHTML = "";
+  const filtered = VIDEOS.filter(v=>v.embed !== excludeId);
+  for(let i=0;i<count;i++){
+    const v = filtered[Math.floor(Math.random()*filtered.length)];
+    const c = document.createElement("div");
+    c.className="card show";
+    c.innerHTML=`<div class="thumb"></div><div class="info"><p class="title">${v.title}</p></div>`;
+    c.onclick=()=>{
+      if(cardClickAd){
+        window.open(AD_LINK,"_blank");
+        cardClickAd=false;
+        setTimeout(()=>cardClickAd=true,1000);
+      }
+      location.hash=`/e/${v.embed}`;
+    };
+    list.appendChild(c);
+  }
+}
+
 function handleRoute(){
   const id=getVideoId();
   if(!id){
     playerBox.style.display="none";
     videoInfo.style.display="none";
+    renderPage(currentPage);
     return;
   }
   const v=VIDEOS.find(x=>x.embed===id);
-  if(!v)return;
+  if(!v) return;
   player.src=`https://cdn.videy.co/${id}.mp4?ts=${Date.now()}`;
   playerBox.style.display="block";
   videoInfo.style.display="block";
   videoTitle.textContent=v.title;
   firstPlayAd=true;
+  renderRandomCards(id);
 }
 
 fetch(API_JSON)
@@ -320,6 +341,5 @@ fetch(API_JSON)
 
 window.addEventListener("hashchange", handleRoute);
 </script>
-
 </body>
 </html>
